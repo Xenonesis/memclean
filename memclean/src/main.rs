@@ -28,7 +28,7 @@ fn register_autostart(enable: bool) {
             .args(&[
                 "/create",
                 "/tn", "MemCleanAutoStart",
-                "/tr", &format!("\"{}\"", exe_str),
+                "/tr", &format!("\"{}\" --minimized", exe_str),
                 "/sc", "onlogon",
                 "/rl", "highest",
                 "/f"
@@ -48,6 +48,14 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
+        if args[1] == "--minimized" {
+            #[cfg(windows)]
+            {
+                memclean::ui::tray::run_application(true);
+            }
+            return;
+        }
+
         #[cfg(windows)]
         unsafe {
             AttachConsole(ATTACH_PARENT_PROCESS);
@@ -81,9 +89,9 @@ fn main() {
         return;
     }
 
-    // Default: Run system tray GUI
+    // Default: Run full GUI window
     #[cfg(windows)]
     {
-        memclean::ui::tray::run_tray_application();
+        memclean::ui::tray::run_application(false);
     }
 }
