@@ -1,7 +1,11 @@
+#![windows_subsystem = "windows"]
+
 use memclean::config::AppConfig;
 use memclean::core::{memory, privileges};
 use memclean::engine::cleaner;
 use std::env;
+#[cfg(windows)]
+use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
 
 fn print_help() {
     println!("MemClean - Ultra-Lightweight Pure Rust Memory Optimizer");
@@ -44,6 +48,10 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     if args.len() > 1 {
+        #[cfg(windows)]
+        unsafe {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
         let config = AppConfig::load();
         match args[1].as_str() {
             "--status" => {

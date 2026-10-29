@@ -1,22 +1,22 @@
 use crate::config::AppConfig;
 use crate::core::memory;
 use crate::engine::cleaner;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use windows_sys::Win32::Foundation::{GetLastError, HWND, LPARAM, LRESULT, POINT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     CreateCompatibleDC, CreateDIBSection, CreateFontW, DeleteDC, DeleteObject, SelectObject,
     SetBkMode, SetTextColor, TextOutW, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
     FW_BOLD, TRANSPARENT,
 };
 use windows_sys::Win32::UI::Shell::{
-    Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NIM_MODIFY,
+    Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
+    NIM_ADD, NIM_DELETE, NIM_MODIFY,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
     DispatchMessageW, GetCursorPos, GetMessageW, PostQuitMessage, RegisterClassW,
     SetForegroundWindow, SetTimer, TrackPopupMenu, ICONINFO, MSG, TPM_BOTTOMALIGN,
-    TPM_RIGHTALIGN, WM_COMMAND, WM_DESTROY, WM_RBUTTONUP, WM_TIMER, WM_USER, WNDCLASSW,
+    TPM_RIGHTALIGN, WM_COMMAND, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
+    WM_TIMER, WM_USER, WNDCLASSW,
 };
 
 const WM_TRAYICON: u32 = WM_USER + 1;
@@ -123,16 +123,25 @@ pub fn run_tray_application() {
 
         let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
         nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
-        nid.hWnd = hwnd;
-        nid.uID = 1;
-        nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+        nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_INFO;
         nid.uCallbackMessage = WM_TRAYICON;
         nid.hIcon = hicon;
+        nid.dwInfoFlags = NIIF_INFO;
 
         let tip = format!("MemClean: {}% RAM Used\0", stats.used_percent);
         let tip_wide: Vec<u16> = tip.encode_utf16().collect();
         let copy_len = tip_wide.len().min(nid.szTip.len());
         nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
+
+        let title = "MemClean Active\0";
+        let title_wide: Vec<u16> = title.encode_utf16().collect();
+        let copy_title_len = title_wide.len().min(nid.szInfoTitle.len());
+        nid.szInfoTitle[..copy_title_len].copy_from_slice(&title_wide[..copy_title_len]);
+
+        let info = "MemClean is running in the system tray. Click to configure or right-click to optimize.\0";
+        let info_wide: Vec<u16> = info.encode_utf16().collect();
+        let copy_info_len = info_wide.len().min(nid.szInfo.len());
+        nid.szInfo[..copy_info_len].copy_from_slice(&info_wide[..copy_info_len]);
 
         Shell_NotifyIconW(NIM_ADD, &nid);
 
@@ -152,11 +161,14 @@ pub fn run_tray_application() {
 unsafe extern "system" fn tray_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match msg {
         WM_TRAYICON => {
-            if lparam as u32 == WM_RBUTTONUP {
+            let event = lparam as u32;
+            if event == WM_RBUTTONUP {
                 let mut pt = POINT { x: 0, y: 0 };
                 GetCursorPos(&mut pt);
                 SetForegroundWindow(hwnd);
                 show_tray_menu(hwnd, pt.x, pt.y);
+            } else if event == WM_LBUTTONDBLCLK || event == WM_LBUTTONUP {
+                crate::ui::dialog::show_settings_dialog(hwnd);
             }
             0
         }
@@ -231,4 +243,15 @@ unsafe fn show_tray_menu(hwnd: HWND, x: i32, y: i32) {
 
     TrackPopupMenu(menu, TPM_RIGHTALIGN | TPM_BOTTOMALIGN, x, y, 0, hwnd, std::ptr::null());
     DestroyMenu(menu);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_icon_not_null() {
+        let icon = create_percent_icon(42);
+        assert!(!icon.is_null());
+    }
 }
