@@ -1,5 +1,5 @@
 [Setup]
-AppId={9F57C02D-2A9F-4D2A-B981-D189873E4A10}
+AppId={{9F57C02D-2A9F-4D2A-B981-D189873E4A10}}
 AppName=MemClean
 AppVersion=1.0.0
 AppPublisher=MemClean
@@ -21,7 +21,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostart"; Description: "Run MemClean automatically on Windows startup (Silent Elevation)"; GroupDescription: "Startup:"
 
 [Files]
-Source: "..\target\release\memclean.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\memclean\target\release\memclean.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\MemClean"; Filename: "{app}\memclean.exe"
