@@ -1,0 +1,18 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests\test_cleaner.rs (target\debug\deps\test_cleaner-cf1a5553af0130a5.exe)
+
+running 1 test
+
+thread 'test_clean_orchestration' (31356) panicked at tests\test_cleaner.rs:7:5:
+assertion failed: res.standby_purged
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test test_clean_orchestration ... FAILED
+
+failures:
+
+failures:
+    test_clean_orchestration
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+error: test failed, to rerun pass `--test test_cleaner`

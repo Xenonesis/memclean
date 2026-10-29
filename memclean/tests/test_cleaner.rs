@@ -1,0 +1,8 @@
+#[test]
+fn test_clean_orchestration() {
+    let mut config = memclean::config::AppConfig::default();
+    // Disable process trimming in test to avoid interfering with test runner
+    config.policy.trim_working_sets = false;
+    let res = memclean::engine::cleaner::perform_clean(&config, false);
+    assert!(res.standby_purged);
+}
