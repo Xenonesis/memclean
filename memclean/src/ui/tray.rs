@@ -141,8 +141,34 @@ unsafe fn update_stats_display(hwnd: HWND) {
     }
 }
 
+use std::sync::Mutex;
+use std::time::Instant;
+
+static CACHED_CONFIG: Mutex<Option<AppConfig>> = Mutex::new(None);
+static LAST_AUTO_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
+static LAST_PERIODIC_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn get_config() -> AppConfig {
+    let mut lock = CACHED_CONFIG.lock().unwrap();
+    if lock.is_none() {
+        *lock = Some(AppConfig::load());
+    }
+    lock.clone().unwrap()
+}
+
+fn update_config<F: FnOnce(&mut AppConfig)>(f: F) {
+    let mut lock = CACHED_CONFIG.lock().unwrap();
+    if lock.is_none() {
+        *lock = Some(AppConfig::load());
+    }
+    if let Some(cfg) = lock.as_mut() {
+        f(cfg);
+        let _ = cfg.save();
+    }
+}
+
 unsafe fn load_config_to_controls(hwnd: HWND) {
-    let config = AppConfig::load();
+    let config = get_config();
     set_checked(hwnd, 301, config.policy.purge_standby);
     set_checked(hwnd, 302, config.policy.purge_low_priority_standby);
     set_checked(hwnd, 303, config.policy.flush_modified);
@@ -153,16 +179,43 @@ unsafe fn load_config_to_controls(hwnd: HWND) {
 }
 
 unsafe fn save_config_from_controls(hwnd: HWND) {
-    let mut config = AppConfig::load();
-    config.policy.purge_standby = is_checked(hwnd, 301);
-    config.policy.purge_low_priority_standby = is_checked(hwnd, 302);
-    config.policy.flush_modified = is_checked(hwnd, 303);
-    config.policy.trim_file_cache = is_checked(hwnd, 304);
-    config.policy.trim_working_sets = is_checked(hwnd, 305);
-    config.policy.game_guard_enabled = is_checked(hwnd, 306);
-    config.triggers.auto_threshold_enabled = is_checked(hwnd, 307);
-    let _ = config.save();
+    let purge_standby = is_checked(hwnd, 301);
+    let purge_low_standby = is_checked(hwnd, 302);
+    let flush_mod = is_checked(hwnd, 303);
+    let trim_cache = is_checked(hwnd, 304);
+    let trim_ws = is_checked(hwnd, 305);
+    let game_guard = is_checked(hwnd, 306);
+    let auto_thresh = is_checked(hwnd, 307);
+
+    update_config(|cfg| {
+        cfg.policy.purge_standby = purge_standby;
+        cfg.policy.purge_low_priority_standby = purge_low_standby;
+        cfg.policy.flush_modified = flush_mod;
+        cfg.policy.trim_file_cache = trim_cache;
+        cfg.policy.trim_working_sets = trim_ws;
+        cfg.policy.game_guard_enabled = game_guard;
+        cfg.triggers.auto_threshold_enabled = auto_thresh;
+        cfg.policy.preset = crate::config::Preset::Custom;
+    });
     set_text(hwnd, 103, "Status: Settings saved successfully.");
+}
+
+unsafe fn show_tray_notification(hwnd: HWND, title: &str, message: &str) {
+    let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
+    nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+    nid.hWnd = hwnd;
+    nid.uID = 1;
+    nid.uFlags = NIF_INFO;
+    nid.dwInfoFlags = NIIF_INFO;
+
+    let title_wide: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
+    let msg_wide: Vec<u16> = message.encode_utf16().chain(std::iter::once(0)).collect();
+    let copy_title_len = title_wide.len().min(nid.szInfoTitle.len());
+    nid.szInfoTitle[..copy_title_len].copy_from_slice(&title_wide[..copy_title_len]);
+    let copy_msg_len = msg_wide.len().min(nid.szInfo.len());
+    nid.szInfo[..copy_msg_len].copy_from_slice(&msg_wide[..copy_msg_len]);
+
+    Shell_NotifyIconW(NIM_MODIFY, &nid);
 }
 
 pub fn run_tray_application() {
@@ -337,11 +390,42 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             0
         }
         WM_TIMER => {
+            let config = get_config();
             if let Ok(stats) = memory::get_memory_stats() {
-                let config = AppConfig::load();
-                if config.triggers.auto_threshold_enabled && stats.used_percent >= config.triggers.threshold_percent {
+                let now = Instant::now();
+
+                // 1. Threshold-based auto-clean (debounced to 60s cooldown to prevent continuous 1Hz thrashing)
+                let can_auto_clean = {
+                    let lock = LAST_AUTO_CLEAN.lock().unwrap();
+                    lock.map_or(true, |last| now.duration_since(last).as_secs() >= 60)
+                };
+
+                if config.triggers.auto_threshold_enabled
+                    && stats.used_percent >= config.triggers.threshold_percent
+                    && can_auto_clean
+                {
                     cleaner::perform_clean(&config, false);
+                    if let Ok(mut lock) = LAST_AUTO_CLEAN.lock() {
+                        *lock = Some(now);
+                    }
                     set_text(hwnd, 103, "Status: Auto-cleaned (exceeded threshold).");
+                }
+
+                // 2. Scheduled timer-based auto-clean (e.g. every 15 minutes)
+                if config.triggers.auto_timer_enabled && config.triggers.timer_minutes > 0 {
+                    let interval_secs = (config.triggers.timer_minutes as u64) * 60;
+                    let should_timer_clean = {
+                        let lock = LAST_PERIODIC_CLEAN.lock().unwrap();
+                        lock.map_or(true, |last| now.duration_since(last).as_secs() >= interval_secs)
+                    };
+
+                    if should_timer_clean {
+                        cleaner::perform_clean(&config, false);
+                        if let Ok(mut lock) = LAST_PERIODIC_CLEAN.lock() {
+                            *lock = Some(now);
+                        }
+                        set_text(hwnd, 103, "Status: Auto-cleaned (scheduled timer).");
+                    }
                 }
 
                 update_stats_display(hwnd);
@@ -368,13 +452,20 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             let id = (wparam & 0xFFFF) as u32;
             match id {
                 201 | 502 => { // Optimize Memory Now
+                    if id == 201 {
+                        save_config_from_controls(hwnd);
+                    }
                     let before = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
-                    let config = AppConfig::load();
+                    let config = get_config();
                     let _ = cleaner::perform_clean(&config, false);
                     let after = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
                     let freed = if after > before { after - before } else { 0 };
                     set_text(hwnd, 103, &format!("Status: Optimized! Freed {} MB RAM.", freed));
                     update_stats_display(hwnd);
+
+                    if id == 502 {
+                        show_tray_notification(hwnd, "MemClean Optimization", &format!("Freed {} MB physical RAM.", freed));
+                    }
                 }
                 202 | 503 => { // Purge Standby
                     let _ = crate::core::ntdll::purge_standby_list();

@@ -33,4 +33,5 @@ Filename: "{app}\memclean.exe"; Parameters: "--autostart"; Tasks: autostart; Fla
 Filename: "{app}\memclean.exe"; Description: "{cm:LaunchProgram,MemClean}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{app}\memclean.exe"; Parameters: "--no-autostart"; Flags: runhidden
+Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn MemCleanAutoStart /f"; Flags: runhidden; RunOnceId: "MemCleanDelTask"
+Filename: "{sys}\taskkill.exe"; Parameters: "/f /im memclean.exe"; Flags: runhidden; RunOnceId: "MemCleanKillProc"

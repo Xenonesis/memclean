@@ -20,6 +20,24 @@ pub fn get_foreground_context() -> Option<ForegroundContext> {
             return None;
         }
 
+        let own_pid = windows_sys::Win32::System::Threading::GetCurrentProcessId();
+        if pid == own_pid {
+            return None;
+        }
+
+        let mut class_buf = [0u16; 64];
+        let len = windows_sys::Win32::UI::WindowsAndMessaging::GetClassNameW(
+            hwnd,
+            class_buf.as_mut_ptr(),
+            class_buf.len() as i32,
+        );
+        if len > 0 {
+            let class_str = String::from_utf16_lossy(&class_buf[..len as usize]);
+            if class_str == "Progman" || class_str == "WorkerW" || class_str == "Shell_TrayWnd" {
+                return None;
+            }
+        }
+
         let mut win_rect: RECT = std::mem::zeroed();
         GetWindowRect(hwnd, &mut win_rect);
 
@@ -52,6 +70,12 @@ pub fn is_protected_process(
 ) -> bool {
     let lower_name = name.to_lowercase();
 
+    // 0. Always protect self regardless of executable name
+    let own_pid = unsafe { windows_sys::Win32::System::Threading::GetCurrentProcessId() };
+    if pid == own_pid {
+        return true;
+    }
+
     // 1. Whitelist of Windows core system critical processes
     const SYSTEM_WHITELIST: &[&str] = &[
         "system",
@@ -69,7 +93,6 @@ pub fn is_protected_process(
     if SYSTEM_WHITELIST.contains(&lower_name.as_str()) {
         return true;
     }
-
     // 2. Foreground process protection (shield)
     if let Some(foreground_id) = fg_pid {
         if pid == foreground_id {
@@ -78,9 +101,8 @@ pub fn is_protected_process(
     }
 
     // 3. User configured exclusion list
-    if custom_exclusions.iter().any(|ex| ex.to_lowercase() == lower_name) {
+    if custom_exclusions.iter().any(|ex| ex.trim().eq_ignore_ascii_case(&lower_name)) {
         return true;
     }
-
     false
 }
