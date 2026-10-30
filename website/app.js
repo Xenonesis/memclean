@@ -1,13 +1,15 @@
 /**
- * MemClean — Interactive Website Engine
+ * MemClean — Utilitarian Website Engine
  * Zero-dependency pure vanilla JavaScript.
  *
  * Features:
- * 1. 5-Tier NT Kernel Memory Optimizer Simulation (with micro-delay animation)
+ * 1. 5-Tier NT Kernel Memory Optimizer Simulation
  * 2. Real-time Telemetry & Dynamic GDI Tray Badge Preview
  * 3. Scriptable CLI Terminal Command Switcher with authentic stdout
  * 4. Universal One-Click Clipboard Copy with Toast Feedback
- * 5. Responsive Mobile Navigation Menu & Smooth Anchor Scrolling
+ * 5. Utilitarian Accordion FAQ (with sharp + / − indicators)
+ * 6. IntersectionObserver Scroll Entry Micro-Reveals
+ * 7. Responsive Mobile Navigation Menu & Smooth Anchor Scrolling
  */
 
 'use strict';
@@ -16,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initMemorySimulator();
   initTerminalShowcase();
   initClipboardHandlers();
+  initFaqAccordion();
+  initScrollReveals();
   initMobileNav();
   initSmoothScroll();
   initTaskbarClock();
@@ -26,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
    ========================================================================== */
 
 function initMemorySimulator() {
-  const cleanBtn = document.getElementById('sim-clean-btn') || document.getElementById('btnRunOptimize');
-  const resetBtn = document.getElementById('sim-reset-btn') || document.getElementById('btnResetDemo');
-  const ramPercentEl = document.getElementById('sim-ram-percent') || document.getElementById('ramPercentage');
-  const ramUsageEl = document.getElementById('sim-ram-usage') || document.getElementById('ramUsedGB');
+  const cleanBtn = document.getElementById('sim-clean-btn');
+  const resetBtn = document.getElementById('sim-reset-btn');
+  const ramPercentEl = document.getElementById('sim-ram-percent');
+  const ramUsageEl = document.getElementById('sim-ram-usage');
   const progressTrack = document.getElementById('sim-progress-track');
 
   const segActive = document.getElementById('sim-seg-active');
@@ -42,8 +46,8 @@ function initMemorySimulator() {
   const legendModified = document.getElementById('legend-modified');
   const legendFree = document.getElementById('legend-free');
 
-  const freedBadge = document.getElementById('sim-freed-badge') || document.getElementById('freedAmount');
-  const freedText = document.getElementById('freed-amount-text') || (freedBadge ? freedBadge.querySelector('span') : null);
+  const freedBadge = document.getElementById('sim-freed-badge');
+  const freedText = document.getElementById('freed-amount-text');
 
   const logStatus = document.getElementById('sim-log-status');
   const logSteps = [
@@ -118,7 +122,7 @@ function initMemorySimulator() {
     },
     {
       stepIndex: 2,
-      runningText: 'Writing dirty pages to disk...',
+      runningText: 'Flushing modified dirty pages...',
       doneText: 'Done (-1,600 MB)',
       delay: 360,
       state: {
@@ -137,7 +141,7 @@ function initMemorySimulator() {
     },
     {
       stepIndex: 3,
-      runningText: 'Trimming kernel cache...',
+      runningText: 'Trimming filesystem cache...',
       doneText: 'Done (-500 MB)',
       delay: 300,
       state: {
@@ -187,7 +191,6 @@ function initMemorySimulator() {
     function tick(now) {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      // Ease-out cubic formula
       const ease = 1 - Math.pow(1 - progress, 3);
       const current = from + (to - from) * ease;
       onUpdate(current);
@@ -208,7 +211,7 @@ function initMemorySimulator() {
     }
     if (segStandby) {
       segStandby.style.width = `${state.standbyWidth}%`;
-      segStandby.setAttribute('title', `Standby List Cache: ${state.standbyGB.toFixed(1)} GB`);
+      segStandby.setAttribute('title', `Standby Page Cache: ${state.standbyGB.toFixed(1)} GB`);
     }
     if (segModified) {
       segModified.style.width = `${state.modifiedWidth}%`;
@@ -216,14 +219,14 @@ function initMemorySimulator() {
     }
     if (segFree) {
       segFree.style.width = `${state.freeWidth}%`;
-      segFree.setAttribute('title', `Free / Available RAM: ${state.freeGB.toFixed(1)} GB`);
+      segFree.setAttribute('title', `Free Available RAM: ${state.freeGB.toFixed(1)} GB`);
     }
 
     // Update legends
-    if (legendActive) legendActive.textContent = `Active Apps (${state.activeGB.toFixed(1)} GB)`;
-    if (legendStandby) legendStandby.textContent = `Standby Cache (${state.standbyGB.toFixed(1)} GB)`;
-    if (legendModified) legendModified.textContent = `Modified List (${state.modifiedGB.toFixed(1)} GB)`;
-    if (legendFree) legendFree.textContent = `Free List (${state.freeGB.toFixed(1)} GB)`;
+    if (legendActive) legendActive.textContent = `Active Working Sets (${state.activeGB.toFixed(1)} GB)`;
+    if (legendStandby) legendStandby.textContent = `Standby Page Cache (${state.standbyGB.toFixed(1)} GB)`;
+    if (legendModified) legendModified.textContent = `Modified Dirty List (${state.modifiedGB.toFixed(1)} GB)`;
+    if (legendFree) legendFree.textContent = `Free Available RAM (${state.freeGB.toFixed(1)} GB)`;
 
     if (progressTrack) {
       progressTrack.setAttribute('aria-valuenow', Math.round(state.percent));
@@ -261,12 +264,15 @@ function initMemorySimulator() {
       trayNum.textContent = state.trayNum;
     }
     if (trayIcon) {
-      if (state.isOptimal) {
-        trayIcon.classList.add('optimal');
-        trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (Optimal)`);
+      if (state.percent < 70) {
+        trayIcon.style.backgroundColor = '#1F6C38';
+        trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (Healthy)`);
+      } else if (state.percent < 85) {
+        trayIcon.style.backgroundColor = '#855800';
+        trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (Elevated)`);
       } else {
-        trayIcon.classList.remove('optimal');
-        trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used`);
+        trayIcon.style.backgroundColor = '#9F2F2D';
+        trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (High)`);
       }
     }
   }
@@ -276,144 +282,101 @@ function initMemorySimulator() {
     if (!stepEl) return;
 
     const statusEl = stepEl.querySelector('.log-step-status');
-    stepEl.classList.remove('active', 'completed');
+    stepEl.classList.remove('active', 'done');
 
     if (status === 'active') {
       stepEl.classList.add('active');
       if (statusEl) {
         statusEl.textContent = customText || 'Running...';
-        statusEl.className = 'log-step-status';
-        statusEl.style.color = 'var(--color-accent)';
+        statusEl.style.color = 'var(--pastel-blue-text)';
       }
-    } else if (status === 'completed') {
-      stepEl.classList.add('completed');
+    } else if (status === 'done') {
+      stepEl.classList.add('done');
       if (statusEl) {
         statusEl.textContent = customText || 'Done';
-        statusEl.className = 'log-step-status';
-        statusEl.style.color = '#22C55E';
+        statusEl.style.color = 'var(--pastel-green-text)';
       }
     } else {
-      // Idle
       if (statusEl) {
         statusEl.textContent = 'Idle';
-        statusEl.className = 'log-step-status stdout-dim';
         statusEl.style.color = '';
       }
     }
   }
 
-  function resetSimulation() {
-    cancelAnimationFrame(activeAnimFrame);
-    activeAnimFrame = null;
-    isRunning = false;
+  function resetToInitial() {
+    if (isRunning) return;
+    if (activeAnimFrame) cancelAnimationFrame(activeAnimFrame);
 
-    // Reset button states
-    cleanBtn.disabled = false;
-    cleanBtn.classList.remove('btn-loading');
-    cleanBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-      </svg>
-      <span>Clean Memory Now</span>
-    `;
+    applyMemoryState(INITIAL_STATE, true);
 
-    // Hide freed badge
-    if (freedBadge) {
-      freedBadge.classList.remove('show');
-    }
-
-    // Reset log steps
     if (logStatus) {
       logStatus.textContent = 'Waiting for trigger';
       logStatus.className = 'stdout-dim';
-      logStatus.style.color = '';
     }
 
-    for (let i = 0; i < logSteps.length; i++) {
-      setLogStepState(i, 'idle');
+    logSteps.forEach((_, idx) => setLogStepState(idx, 'idle'));
+
+    if (freedBadge) {
+      freedBadge.classList.remove('active');
     }
 
-    // Restore initial values
-    applyMemoryState(INITIAL_STATE, false);
+    cleanBtn.disabled = false;
+    cleanBtn.style.opacity = '1';
   }
 
-  async function runSimulation() {
+  function executeCleanSequence() {
     if (isRunning) return;
     isRunning = true;
-
-    // Button in running state
     cleanBtn.disabled = true;
-    cleanBtn.innerHTML = `
-      <svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="animation: spin 1s linear infinite;">
-        <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-        <path d="M12 2a10 10 0 0 1 10 10"></path>
-      </svg>
-      <span>Purging Tiers...</span>
-    `;
+    cleanBtn.style.opacity = '0.6';
 
+    if (freedBadge) freedBadge.classList.remove('active');
     if (logStatus) {
-      logStatus.textContent = 'Purging memory tiers...';
-      logStatus.className = '';
-      logStatus.style.color = 'var(--color-accent)';
+      logStatus.textContent = 'Pipeline Active';
+      logStatus.className = 'stdout-dim';
     }
 
-    if (freedBadge) {
-      freedBadge.classList.remove('show');
-    }
+    let currentStep = 0;
 
-    // Run sequential steps with micro delays
-    for (let i = 0; i < PURGE_STEPS.length; i++) {
-      const step = PURGE_STEPS[i];
-
-      // Mark step active
-      setLogStepState(i, 'active', step.runningText);
-
-      // Wait micro delay
-      await new Promise((resolve) => setTimeout(resolve, step.delay));
-
-      // Update memory telemetry
-      applyMemoryState(step.state, true);
-
-      // Mark step completed
-      setLogStepState(i, 'completed', step.doneText);
-
-      // Brief pause between stages
-      await new Promise((resolve) => setTimeout(resolve, 80));
-    }
-
-    // Final Completion State
-    if (logStatus) {
-      logStatus.textContent = '5-Tier Purge Complete';
-      logStatus.style.color = '#22C55E';
-    }
-
-    // Animate freed badge
-    if (freedBadge) {
-      if (freedText) {
-        animateValue(0, 7800, 600, (val) => {
-          freedText.textContent = `+${Math.round(val).toLocaleString()} MB Reclaimed`;
-        });
+    function runNextStep() {
+      if (currentStep >= PURGE_STEPS.length) {
+        // Complete
+        isRunning = false;
+        cleanBtn.disabled = false;
+        cleanBtn.style.opacity = '1';
+        if (logStatus) {
+          logStatus.textContent = 'Completed Successfully';
+          logStatus.style.color = 'var(--pastel-green-text)';
+        }
+        if (freedBadge) {
+          if (freedText) freedText.textContent = '+7,800 MB Reclaimed';
+          freedBadge.classList.add('active');
+        }
+        return;
       }
-      freedBadge.classList.add('show');
+
+      const step = PURGE_STEPS[currentStep];
+      setLogStepState(step.stepIndex, 'active', step.runningText);
+
+      setTimeout(() => {
+        applyMemoryState(step.state, true);
+        setLogStepState(step.stepIndex, 'done', step.doneText);
+        currentStep++;
+        runNextStep();
+      }, step.delay);
     }
 
-    // Restore clean button for replay
-    cleanBtn.disabled = false;
-    cleanBtn.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-      </svg>
-      <span>Clean Again</span>
-    `;
-
-    isRunning = false;
+    runNextStep();
   }
 
-  cleanBtn.addEventListener('click', runSimulation);
-
+  cleanBtn.addEventListener('click', executeCleanSequence);
   if (resetBtn) {
-    resetBtn.addEventListener('click', resetSimulation);
+    resetBtn.addEventListener('click', resetToInitial);
   }
+
+  // Initial apply
+  applyMemoryState(INITIAL_STATE, false);
 }
 
 /* ==========================================================================
@@ -421,12 +384,12 @@ function initMemorySimulator() {
    ========================================================================== */
 
 function initTerminalShowcase() {
-  const tabButtons = document.querySelectorAll('.terminal-tab-btn');
-  const currentCmdText = document.getElementById('current-cmd-text');
-  const terminalOutput = document.getElementById('terminal-output') || document.getElementById('terminalOutput');
-  const copyTerminalBtn = document.getElementById('copy-terminal-btn') || document.getElementById('btnCopyTerminal');
+  const tabs = document.querySelectorAll('.terminal-tab-btn');
+  const cmdText = document.getElementById('current-cmd-text');
+  const outputText = document.getElementById('terminal-output');
+  const copyBtn = document.getElementById('copy-terminal-btn');
 
-  if (!tabButtons.length || !terminalOutput) return;
+  if (!tabs.length || !cmdText || !outputText) return;
 
   const COMMAND_DATA = {
     status: {
@@ -443,110 +406,71 @@ Working Sets:  5124 MB`
     },
     clean: {
       cmd: 'memclean.exe --clean',
-      output: `[+] Acquired SeDebugPrivilege, SeIncreaseQuotaPrivilege
-[1/5] Purged Standby List (NtSetSystemInformation) -> 5,520 MB reclaimed
-[2/5] Purged Low-Priority Standby (Priority 0)     -> 1,100 MB reclaimed
-[3/5] Flushed Modified Page List to disk           -> 1,600 MB written
-[4/5] Trimmed System File Cache (SetSystemFileCacheSize) -> 380 MB reclaimed
-[5/5] Trimmed 34 background working sets (Shielded: Cyberpunk2077.exe)
-
-Optimization completed: CleanResult { standby_purged: true, modified_flushed: true, file_cache_trimmed: true, processes_trimmed: 34 }
-Reclaimed:  7,800 MB
-RAM Used:   5,384 MB (34%)
-RAM Avail:  10,616 MB`
+      output: `[INFO] Initializing MemClean v1.0.0...
+[INFO] Acquired SeProfileSingleProcessPrivilege & SeIncreaseQuotaPrivilege.
+[INFO] Purging Standby List (NtSetSystemInformation)... OK
+[INFO] Purging Low-Priority Standby List (Priority 0)... OK
+[INFO] Flushing Modified Page List to disk... OK
+[INFO] Trimming System File Cache working set... OK
+[INFO] Optimization complete!
+Physical RAM Freed: 7,824 MB
+Available Physical RAM: 10,640 MB / 16,000 MB (34% used)`
     },
     aggressive: {
       cmd: 'memclean.exe --aggressive',
-      output: `[!] WARNING: Aggressive mode overrides Game Guard restrictions.
-[+] Purging all standby priority tiers (0-7)... OK
-[+] Forcing synchronous modified page write-back... OK
-[+] Purging system file cache & driver paged pools... OK
-[+] Trimming ALL process working sets (including background daemons)... OK (108 processes trimmed)
-
-Aggressive clean completed: CleanResult { standby_purged: true, modified_flushed: true, file_cache_trimmed: true, processes_trimmed: 108 }
-Reclaimed:  8,420 MB
-RAM Used:   4,764 MB (29%)
-RAM Avail:  11,236 MB`
+      output: `[WARN] Aggressive mode requested.
+[INFO] Foreground Guard: DETECTED (Cyberpunk2077.exe [PID 14208]).
+[INFO] Foreground working set protected from eviction.
+[INFO] Purged 5-tier kernel cache.
+[INFO] Trimmed 18 background processes.
+Total Memory Reclaimed: 8,410 MB
+Zero frame stutters detected.`
     },
     autostart: {
       cmd: 'memclean.exe --autostart',
-      output: `[+] Creating elevated Task Scheduler job: "MemCleanAutoStart"
-[+] Target: "C:\\Program Files\\MemClean\\memclean.exe" --minimized
-[+] Trigger: At logon of any user
-[+] RunLevel: HighestAvailable (Zero-UAC Silent Startup)
-Registered elevated task scheduler autostart: ExitStatus(unix_wait_status(0))
-
-SUCCESS: MemClean daemon will start silently in system tray at Windows logon.`
+      output: `[INFO] Registering Windows Task Scheduler logon task...
+Task Name:    MemCleanLogonAutoStart
+Run Level:    TASK_RUNLEVEL_HIGHEST
+Logon Action: Launch 'C:\\Program Files\\MemClean\\memclean.exe'
+Status:       Successfully configured. Zero UAC prompts will occur on reboot.`
     }
   };
 
-  let activeKey = 'status';
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
 
-  function activateTab(key) {
-    const data = COMMAND_DATA[key];
-    if (!data) return;
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
 
-    activeKey = key;
-
-    tabButtons.forEach((btn) => {
-      const match = (btn.dataset.command === key || btn.dataset.cmd === key);
-      btn.classList.toggle('active', match);
-      btn.setAttribute('aria-selected', match ? 'true' : 'false');
-    });
-
-    if (currentCmdText) {
-      currentCmdText.textContent = data.cmd;
-    }
-    terminalOutput.textContent = data.output;
-  }
-
-  tabButtons.forEach((btn, index) => {
-    btn.addEventListener('click', () => {
-      const cmdKey = btn.dataset.command || btn.dataset.cmd || 'status';
-      activateTab(cmdKey);
-    });
-
-    // Keyboard navigation (Arrow keys Left / Right, Home, End)
-    btn.addEventListener('keydown', (e) => {
-      let nextIndex = null;
-      if (e.key === 'ArrowRight') {
-        nextIndex = (index + 1) % tabButtons.length;
-      } else if (e.key === 'ArrowLeft') {
-        nextIndex = (index - 1 + tabButtons.length) % tabButtons.length;
-      } else if (e.key === 'Home') {
-        nextIndex = 0;
-      } else if (e.key === 'End') {
-        nextIndex = tabButtons.length - 1;
-      }
-
-      if (nextIndex !== null) {
-        e.preventDefault();
-        tabButtons[nextIndex].focus();
-        const cmdKey = tabButtons[nextIndex].dataset.command || tabButtons[nextIndex].dataset.cmd;
-        activateTab(cmdKey);
+      const key = tab.getAttribute('data-command');
+      const data = COMMAND_DATA[key];
+      if (data) {
+        cmdText.textContent = data.cmd;
+        outputText.textContent = data.output;
       }
     });
   });
 
-  // Copy active terminal command
-  if (copyTerminalBtn) {
-    copyTerminalBtn.addEventListener('click', () => {
-      const data = COMMAND_DATA[activeKey];
-      const cmdToCopy = data ? data.cmd : (currentCmdText ? currentCmdText.textContent : 'memclean.exe');
-      copyToClipboard(cmdToCopy, copyTerminalBtn);
+  if (copyBtn) {
+    copyBtn.addEventListener('click', () => {
+      copyToClipboard(cmdText.textContent, copyBtn);
     });
   }
 }
 
 /* ==========================================================================
-   3. Universal One-Click Clipboard Copy with Toast Feedback
+   3. Universal Clipboard Copy Handlers & Toast
    ========================================================================== */
 
 let toastTimeout = null;
 
-function showToast(message = 'Copied to clipboard!') {
-  const toast = document.getElementById('toast') || document.getElementById('copyFeedbackToast');
-  const toastText = document.getElementById('toast-text') || (toast ? toast.querySelector('span') : null);
+function showToast(message = 'Copied to clipboard') {
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toast-text');
 
   if (!toast) return;
 
@@ -558,24 +482,22 @@ function showToast(message = 'Copied to clipboard!') {
   toast.setAttribute('aria-hidden', 'false');
 
   clearTimeout(toastTimeout);
-
   toastTimeout = setTimeout(() => {
     toast.classList.remove('show');
     toast.setAttribute('aria-hidden', 'true');
-  }, 2200);
+  }, 2000);
 }
 
 function copyToClipboard(text, triggerBtn = null) {
   if (!text) return;
 
   function onSuccess() {
-    showToast('Copied to clipboard!');
+    showToast('Copied to clipboard');
     if (triggerBtn) {
       triggerBtn.classList.add('copied');
       const originalSvg = triggerBtn.innerHTML;
-      // Temporary checkmark icon
       triggerBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#22C55E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       `;
@@ -614,7 +536,6 @@ function fallbackCopyText(text, callback) {
 }
 
 function initClipboardHandlers() {
-  // Delegate click for snippet copy buttons and [data-copy]
   document.addEventListener('click', (e) => {
     const copyBtn = e.target.closest('[data-copy], .btn-copy-snippet');
     if (!copyBtn) return;
@@ -629,7 +550,71 @@ function initClipboardHandlers() {
 }
 
 /* ==========================================================================
-   4. Responsive Mobile Navigation Menu
+   4. Utilitarian Accordion FAQ
+   ========================================================================== */
+
+function initFaqAccordion() {
+  const triggers = document.querySelectorAll('.faq-trigger');
+  triggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      const item = trigger.closest('.faq-item');
+      if (!item) return;
+      const isOpen = item.classList.contains('open');
+
+      // Close all other items
+      document.querySelectorAll('.faq-item.open').forEach((openItem) => {
+        if (openItem !== item) {
+          openItem.classList.remove('open');
+          const t = openItem.querySelector('.faq-trigger');
+          if (t) t.setAttribute('aria-expanded', 'false');
+          const icon = openItem.querySelector('.faq-icon');
+          if (icon) icon.textContent = '+';
+        }
+      });
+
+      if (isOpen) {
+        item.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+        const icon = trigger.querySelector('.faq-icon');
+        if (icon) icon.textContent = '+';
+      } else {
+        item.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+        const icon = trigger.querySelector('.faq-icon');
+        if (icon) icon.textContent = '−';
+      }
+    });
+  });
+}
+
+/* ==========================================================================
+   5. IntersectionObserver Scroll Entry Micro-Reveals
+   ========================================================================== */
+
+function initScrollReveals() {
+  const elements = document.querySelectorAll('.reveal-on-scroll');
+  if (!('IntersectionObserver' in window)) {
+    elements.forEach((el) => el.classList.add('revealed'));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  elements.forEach((el) => observer.observe(el));
+}
+
+/* ==========================================================================
+   6. Responsive Mobile Navigation Menu
    ========================================================================== */
 
 function initMobileNav() {
@@ -638,34 +623,35 @@ function initMobileNav() {
 
   if (!toggleBtn || !navLinks) return;
 
-  function toggleMenu(forceState) {
-    const isOpen = typeof forceState === 'boolean' ? forceState : !navLinks.classList.contains('active');
-    navLinks.classList.toggle('active', isOpen);
-    toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  function toggleMenu(forceState = null) {
+    const isExpanded = forceState !== null ? forceState : toggleBtn.getAttribute('aria-expanded') !== 'true';
+    toggleBtn.setAttribute('aria-expanded', isExpanded);
+    navLinks.style.display = isExpanded ? 'flex' : '';
+    if (isExpanded) {
+      navLinks.style.flexDirection = 'column';
+      navLinks.style.position = 'absolute';
+      navLinks.style.top = '64px';
+      navLinks.style.left = '0';
+      navLinks.style.right = '0';
+      navLinks.style.backgroundColor = 'var(--bg-surface)';
+      navLinks.style.borderBottom = '1px solid var(--border-light)';
+      navLinks.style.padding = '24px';
+      navLinks.style.gap = '16px';
+    }
   }
 
-  toggleBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  toggleBtn.addEventListener('click', () => {
     toggleMenu();
   });
 
-  // Close when clicking any nav link
   navLinks.querySelectorAll('a').forEach((link) => {
     link.addEventListener('click', () => {
       toggleMenu(false);
     });
   });
 
-  // Close when clicking outside
-  document.addEventListener('click', (e) => {
-    if (navLinks.classList.contains('active') && !navLinks.contains(e.target) && !toggleBtn.contains(e.target)) {
-      toggleMenu(false);
-    }
-  });
-
-  // Close on Escape key
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && navLinks.classList.contains('active')) {
+    if (e.key === 'Escape' && toggleBtn.getAttribute('aria-expanded') === 'true') {
       toggleMenu(false);
       toggleBtn.focus();
     }
@@ -673,7 +659,7 @@ function initMobileNav() {
 }
 
 /* ==========================================================================
-   5. Smooth Anchor Scrolling
+   7. Smooth Anchor Scrolling
    ========================================================================== */
 
 function initSmoothScroll() {
@@ -690,13 +676,11 @@ function initSmoothScroll() {
           block: 'start'
         });
 
-        // Set focus for keyboard accessibility
         if (!targetEl.hasAttribute('tabindex')) {
           targetEl.setAttribute('tabindex', '-1');
         }
         targetEl.focus({ preventScroll: true });
 
-        // Update URL hash without jumping
         if (history.pushState) {
           history.pushState(null, null, href);
         }
@@ -706,7 +690,7 @@ function initSmoothScroll() {
 }
 
 /* ==========================================================================
-   6. Live Taskbar Clock Sync
+   8. Live Taskbar Clock Sync
    ========================================================================== */
 
 function initTaskbarClock() {

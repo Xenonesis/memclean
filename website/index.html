@@ -3,26 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MemClean — Ultra-Lightweight Pure Rust Windows Memory Optimizer</title>
-  <meta name="description" content="Sub-500 KB native Windows memory optimizer written in pure Rust. Replaces Sordum ReduceMemory with 5-tier NT kernel purging, zero-latency game shield, and zero-UAC boot startup.">
+  <title>MemClean — Utilitarian Windows Memory Optimizer in Pure Rust</title>
+  <meta name="description" content="Sub-500 KB native Windows memory optimizer written in pure Rust. Surgical 5-tier NT kernel purging, zero-latency game shield, and zero-UAC boot startup.">
   <meta name="keywords" content="memclean, windows ram cleaner, rust memory optimizer, standby list purge, reducememory alternative, game memory booster">
   
   <!-- Open Graph / Meta -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="MemClean — Reclaim Windows Memory. Without The Stutter.">
-  <meta property="og:description" content="Ultra-lightweight (<500 KB), pure Rust memory optimizer with 5-tier NT kernel purging and smart fullscreen game protection.">
+  <meta property="og:title" content="MemClean — Physical Memory Management for Windows">
+  <meta property="og:description" content="Sub-500 KB, pure Rust memory optimizer with 5-tier NT kernel purging and zero-stutter foreground protection.">
   <meta property="og:url" content="https://xenonesis.github.io/memclean/">
-  <meta name="theme-color" content="#0F172A">
+  <meta name="theme-color" content="#FBFBFA">
 
   <!-- Favicons and Web App Manifest -->
   <link rel="icon" href="favicon.ico" sizes="48x48">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
-  <!-- Google Fonts: Inter & JetBrains Mono -->
+
+  <!-- Typography: Newsreader & Geist Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
@@ -38,7 +39,7 @@
   <header class="site-header">
     <div class="container nav-container">
       <a href="#" class="brand-link" aria-label="MemClean Homepage">
-        <svg class="brand-icon" viewBox="0 0 256 256" width="34" height="34" fill="none" aria-hidden="true">
+        <svg class="brand-icon" viewBox="0 0 256 256" width="28" height="28" fill="none" aria-hidden="true">
           <path fill="#22C55E" d="M 36 52 C 36 40 44 32 56 32 L 80 32 L 128 80 L 176 32 L 200 32 C 212 32 220 40 220 52 L 220 208 C 220 218 212 224 200 224 L 172 224 C 164 224 160 218 160 210 L 160 96 L 128 128 L 96 96 L 96 210 C 96 218 92 224 84 224 L 56 224 C 44 224 36 218 36 208 Z" />
         </svg>
         <span>MemClean</span>
@@ -52,6 +53,7 @@
           <li><a href="#architecture" class="nav-link">Architecture</a></li>
           <li><a href="#comparison" class="nav-link">Comparison</a></li>
           <li><a href="#cli" class="nav-link">CLI</a></li>
+          <li><a href="#faq" class="nav-link">FAQ</a></li>
           <li><a href="#download" class="nav-link">Download</a></li>
         </ul>
       </nav>
@@ -66,17 +68,12 @@
         </a>
 
         <a href="#download" class="btn btn-primary btn-sm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
           <span>Download</span>
         </a>
       </div>
 
       <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-links">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="6" x2="21" y2="6"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -90,19 +87,19 @@
          Hero Section
          ==================================================================== -->
     <section class="hero-section" id="hero">
-      <div class="container hero-content">
+      <div class="container hero-content reveal-on-scroll">
         <div class="release-pill">
           <span class="status-dot" aria-hidden="true"></span>
-          <span>v1.0.0 Stable Release &bull; Pure Rust 2021 &bull; Windows 10 / 11</span>
+          <span>v1.0.0 Stable &bull; Pure Rust 2021 &bull; Windows 10 / 11</span>
         </div>
 
         <h1 class="hero-headline">
-          Reclaim Windows Memory.<br>
-          <span class="text-gradient-accent">Without The Stutter.</span>
+          Physical memory management,<br>
+          <span class="hero-headline-italic">compiled for kernel purity.</span>
         </h1>
 
         <p class="hero-lead">
-          The ultra-lightweight (<span style="color: #F8FAFC; font-weight: 600;">&lt;500 KB</span>), pure Rust memory optimizer that replaces legacy AutoIt tools. Engineered with 5-tier NT kernel purging, zero-latency game shielding, and silent zero-UAC boot startup.
+          Sub-500 KB native Windows memory optimizer. Directly interfaces with the Windows NT kernel to purge standby lists, modified dirty pages, and filesystem cache without triggering pagefile stuttering or disk thrashing.
         </p>
 
         <div class="hero-actions">
@@ -120,7 +117,7 @@
               <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
               <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
             </svg>
-            <span>Portable Edition (.exe)</span>
+            <span>Portable Binary</span>
           </a>
 
           <a href="https://github.com/Xenonesis/memclean" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
@@ -128,14 +125,14 @@
               <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"></path>
               <path d="M9 18c-4.51 2-5-2-7-2"></path>
             </svg>
-            <span>View Source on GitHub</span>
+            <span>Source Code</span>
           </a>
         </div>
 
         <!-- Four Key Specs Ribbon -->
         <div class="stats-ribbon" role="region" aria-label="Key Performance Metrics">
           <div class="stat-item">
-            <div class="stat-value stat-value-accent">&lt; 500 KB</div>
+            <div class="stat-value">&lt; 500 KB</div>
             <div class="stat-label">Binary Size</div>
           </div>
           <div class="stat-item">
@@ -143,34 +140,42 @@
             <div class="stat-label">Idle RAM Footprint</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value stat-value-accent">0.0%</div>
+            <div class="stat-value">0.0%</div>
             <div class="stat-label">Idle CPU Utilization</div>
           </div>
           <div class="stat-item">
             <div class="stat-value">Zero</div>
-            <div class="stat-label">UAC Boot Prompts</div>
+            <div class="stat-label">UAC Prompts at Startup</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ====================================================================
-         Live Memory Simulator Preview Card
+         Live Memory Simulator Preview Card (Faux-OS Window Chrome)
          ==================================================================== -->
-    <section class="section" id="simulator" style="padding-top: 0;">
-      <div class="container">
-        <div class="simulator-container" role="region" aria-label="Interactive Memory Optimizer Simulator">
+    <section class="section simulator-section" id="simulator">
+      <div class="container reveal-on-scroll">
+        <div class="section-header">
+          <span class="section-tag">Interactive Verification</span>
+          <h2 class="section-title">NT Kernel Memory Purge Simulator</h2>
+          <p class="section-desc">
+            Test the 5-tier memory reclamation pipeline below. Observe how Standby cache and modified dirty lists transition directly to available RAM while shielding foreground processes.
+          </p>
+        </div>
+
+        <div class="faux-window" role="region" aria-label="Interactive Memory Optimizer Simulator">
           <!-- Window Title Bar -->
-          <div class="window-titlebar">
-            <div class="titlebar-dots" aria-hidden="true">
-              <span class="dot dot-red"></span>
-              <span class="dot dot-yellow"></span>
-              <span class="dot dot-green"></span>
+          <div class="faux-window-header">
+            <div class="window-dots" aria-hidden="true">
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
+              <span class="window-dot"></span>
             </div>
-            <div class="titlebar-title">
-              <span>MemClean Engine v1.0.0 — Live RAM Telemetry Simulator</span>
+            <div class="window-title">
+              memclean-telemetry &mdash; Windows 11 (64-bit) 16.0 GB DDR4
             </div>
-            <span class="titlebar-badge">Interactive Demo</span>
+            <span class="window-badge">Real-Time Simulation</span>
           </div>
 
           <!-- Simulator Body -->
@@ -178,20 +183,12 @@
             <!-- Left: RAM Meter Visualizer -->
             <div class="meter-panel">
               <div class="meter-header">
-                <div class="meter-title-wrap">
-                  <h2 class="meter-title">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                      <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                      <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                    </svg>
-                    <span>Physical Memory Pool</span>
-                  </h2>
-                  <span class="meter-subtitle">Windows 11 (64-bit) &bull; 16.0 GB DDR4</span>
+                <div>
+                  <h3 class="meter-title">Physical Memory Allocation</h3>
+                  <span class="meter-subtitle">Total Physical: 16,384 MB</span>
                 </div>
 
-                <div class="meter-main-stat">
+                <div>
                   <div class="stat-ram-percent" id="sim-ram-percent">82%</div>
                   <div class="stat-ram-fraction" id="sim-ram-usage">13.2 GB / 16.0 GB Used</div>
                 </div>
@@ -208,20 +205,20 @@
 
                 <div class="ram-legend">
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #3B82F6;"></span>
-                    <span id="legend-active">Active Apps (5.1 GB)</span>
+                    <span class="legend-color" style="background: #2F3437;"></span>
+                    <span id="legend-active">Active Working Sets (5.1 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #F59E0B;"></span>
-                    <span id="legend-standby">Standby Cache (6.1 GB)</span>
+                    <span class="legend-color" style="background: #D3D1C8;"></span>
+                    <span id="legend-standby">Standby Page Cache (6.1 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #EF4444;"></span>
-                    <span id="legend-modified">Modified List (1.9 GB)</span>
+                    <span class="legend-color" style="background: #E8D5CE;"></span>
+                    <span id="legend-modified">Modified Dirty List (1.9 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #22C55E;"></span>
-                    <span id="legend-free">Free List (2.9 GB)</span>
+                    <span class="legend-color" style="background: #CDE3CE;"></span>
+                    <span id="legend-free">Free Available RAM (2.9 GB)</span>
                   </div>
                 </div>
               </div>
@@ -232,7 +229,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
                   </svg>
-                  <span>Clean Memory Now</span>
+                  <span>Execute 5-Tier Purge</span>
                 </button>
 
                 <button type="button" class="btn btn-secondary btn-sm" id="sim-reset-btn">
@@ -241,14 +238,10 @@
                     <polyline points="1 20 1 14 7 14"></polyline>
                     <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                   </svg>
-                  <span>Reset Demo</span>
+                  <span>Reset Baseline</span>
                 </button>
 
                 <div class="sim-freed-badge" id="sim-freed-badge" aria-live="polite">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                  </svg>
                   <span id="freed-amount-text">+7,800 MB Reclaimed</span>
                 </div>
               </div>
@@ -256,7 +249,7 @@
               <!-- 5-Tier Execution Log in Simulator -->
               <div class="sim-log-panel" id="sim-log-panel">
                 <div class="sim-log-title">
-                  <span>NT Kernel Purge Pipeline</span>
+                  <span>NT Kernel Invocation Log</span>
                   <span id="sim-log-status" class="stdout-dim">Waiting for trigger</span>
                 </div>
                 <div class="sim-log-steps">
@@ -277,7 +270,7 @@
                     <span class="log-step-status stdout-dim">Idle</span>
                   </div>
                   <div class="log-step" id="log-step-5">
-                    <span>[5/5] Trim Background Working Sets (Shield Foreground Game)</span>
+                    <span>[5/5] Trim Background Working Sets (Shield Foreground)</span>
                     <span class="log-step-status stdout-dim">Idle</span>
                   </div>
                 </div>
@@ -288,22 +281,16 @@
             <div class="telemetry-panel">
               <div class="tray-preview-box">
                 <div class="tray-preview-header">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="8" y1="21" x2="16" y2="21"></line>
-                    <line x1="12" y1="17" x2="12" y2="21"></line>
-                  </svg>
-                  <span>Live GDI Taskbar Icon Preview</span>
+                  <span>Dynamic GDI Taskbar Icon</span>
                 </div>
 
                 <div class="taskbar-mockup">
-                  <span style="font-size: 0.75rem; color: #94A3B8; font-family: var(--font-mono);">&and; Windows Tray</span>
+                  <span style="font-size: 0.75rem; color: #787774; font-family: var(--font-mono);">System Notification Area</span>
                   
                   <div class="taskbar-tray">
                     <!-- Dynamic GDI simulated Tray Icon -->
                     <div class="gdi-tray-icon" id="sim-tray-icon" title="MemClean: 82% RAM Used">
                       <span id="tray-num">82</span>
-                      <span class="gdi-icon-label">RAM</span>
                     </div>
 
                     <div class="taskbar-clock">
@@ -313,8 +300,8 @@
                   </div>
                 </div>
 
-                <div style="font-size: 0.8125rem; color: #94A3B8; line-height: 1.5;">
-                  Renders a color-coded numeric percentage badge using native GDI calls. Zero Electron, zero WebView, zero CPU wakeups.
+                <div style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.5;">
+                  Renders a color-coded percentage badge via native GDI calls. Zero Electron runtime, zero WebView, 0.0% idle CPU.
                 </div>
               </div>
 
@@ -325,7 +312,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    <span>Game Guard Status</span>
+                    <span>Foreground Guard</span>
                   </div>
                   <span class="telem-val badge-shield">Active &bull; Protected</span>
                 </div>
@@ -335,9 +322,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <polygon points="5 3 19 12 5 21 5 3"></polygon>
                     </svg>
-                    <span>Foreground Process</span>
+                    <span>Target Process</span>
                   </div>
-                  <span class="telem-val" style="color: #38BDF8;">Cyberpunk2077.exe</span>
+                  <span class="telem-val">Cyberpunk2077.exe</span>
                 </div>
 
                 <div class="telem-card">
@@ -345,9 +332,9 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                     </svg>
-                    <span>Disk Paging Churn</span>
+                    <span>Page Fault Churn</span>
                   </div>
-                  <span class="telem-val" style="color: #22C55E;">0 KB/s (Zero Stutter)</span>
+                  <span class="telem-val" style="color: var(--pastel-green-text);">0 KB/s (Zero Stutter)</span>
                 </div>
 
                 <div class="telem-card">
@@ -356,9 +343,9 @@
                       <circle cx="12" cy="12" r="10"></circle>
                       <polyline points="12 6 12 12 14 14"></polyline>
                     </svg>
-                    <span>Optimization Polling</span>
+                    <span>Trigger Threshold</span>
                   </div>
-                  <span class="telem-val">Every 300s (or >80%)</span>
+                  <span class="telem-val">&gt;80% or 300s Periodic</span>
                 </div>
               </div>
             </div>
@@ -368,15 +355,15 @@
     </section>
 
     <!-- ====================================================================
-         Feature Bento Grid
+         Feature Bento Grid (Asymmetrical Layout)
          ==================================================================== -->
     <section class="section" id="features">
-      <div class="container">
+      <div class="container reveal-on-scroll">
         <div class="section-header">
-          <span class="section-tag">Core Capabilities</span>
-          <h2 class="section-title">Engineered For Peak Windows Performance</h2>
+          <span class="section-tag">Core Architecture</span>
+          <h2 class="section-title">Engineered For Deterministic Windows Performance</h2>
           <p class="section-desc">
-            Unlike legacy tools that blindly flush memory and cause disk freezing, MemClean gives you surgical NT kernel control with zero compromise.
+            Standard RAM cleaners execute indiscriminate flushes that force active code into the Windows pagefile. MemClean enforces surgical NT kernel page list operations.
           </p>
         </div>
 
@@ -393,12 +380,12 @@
               </div>
               <h3 class="bento-title">5-Tier NT Kernel Memory Purging</h3>
               <p class="bento-desc">
-                Directly calls undocumented Windows NT kernel routines (<code style="color: #38BDF8;">NtSetSystemInformation</code>) and the filesystem cache manager. Purges Standby lists, Low-Priority standby, and modified page caches directly to the Free List without triggering disk thrashing or pagefile spikes.
+                Directly invokes undocumented Windows NT kernel routines via <code style="color: var(--pastel-blue-text);">NtSetSystemInformation</code> and the filesystem cache manager. Purges Standby lists, Low-Priority standby, and modified page caches directly to the Free List without triggering disk thrashing or pagefile spikes.
               </p>
             </div>
             <div class="bento-meta">
               <span>NtSetSystemInformation</span>
-              <span class="bento-meta-badge">Zero Disk Thrashing</span>
+              <span class="bento-meta-badge">Direct Free List Transition</span>
             </div>
           </div>
 
@@ -411,14 +398,14 @@
                   <path d="m9 12 2 2 4-4"></path>
                 </svg>
               </div>
-              <h3 class="bento-title">Smart Game & Foreground Shield</h3>
+              <h3 class="bento-title">Smart Game &amp; Foreground Shield</h3>
               <p class="bento-desc">
-                Detects active fullscreen 3D DirectX/Vulkan games and protects their working sets from eviction. Restricts cleans strictly to Standby Cache, guaranteeing zero micro-stutters or 0.1% FPS drops.
+                Detects active fullscreen 3D DirectX/Vulkan windows and isolates their working sets from eviction. Optimizations are restricted strictly to standby cache, preventing 0.1% frame drops.
               </p>
             </div>
             <div class="bento-meta">
-              <span>Fullscreen Detection</span>
-              <span class="bento-meta-badge">0 Frame Drops</span>
+              <span>GetForegroundWindow API</span>
+              <span class="bento-meta-badge">Zero Stutter</span>
             </div>
           </div>
 
@@ -430,9 +417,9 @@
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                 </svg>
               </div>
-              <h3 class="bento-title">Dynamic GDI System Tray Icon</h3>
+              <h3 class="bento-title">Dynamic GDI System Tray Badge</h3>
               <p class="bento-desc">
-                Renders a dynamic 16&times;16 numeric RAM percentage icon right in your Windows taskbar. Color-coded thresholds (Green &lt;70%, Yellow 70&ndash;85%, Red &gt;85%) with zero CPU wakeups.
+                Renders a dynamic 16&times;16 numeric RAM percentage icon right in your Windows taskbar. Threshold-based color coding without CPU wakeups or thread polling loops.
               </p>
             </div>
             <div class="bento-meta">
@@ -450,18 +437,18 @@
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
               </div>
-              <h3 class="bento-title">Silent Zero-UAC Task Scheduler Boot</h3>
+              <h3 class="bento-title">Silent Zero-UAC Startup</h3>
               <p class="bento-desc">
-                Never click "Yes" on a UAC prompt again. MemClean leverages the Windows Task Scheduler API (<code style="color: #38BDF8;">TASK_RUNLEVEL_HIGHEST</code>) to launch silently on user logon with full NT privileges.
+                Eliminates repetitive UAC elevation prompts at login. MemClean registers a scheduled logon task using Windows Task Scheduler with <code style="color: var(--pastel-blue-text);">TASK_RUNLEVEL_HIGHEST</code>.
               </p>
             </div>
             <div class="bento-meta">
-              <span>schtasks Integration</span>
-              <span class="bento-meta-badge">Zero UAC Popups</span>
+              <span>Task Scheduler Engine</span>
+              <span class="bento-meta-badge">Zero UAC Dialogs</span>
             </div>
           </div>
 
-          <!-- Bento 5: Dual-Mode GUI & CLI -->
+          <!-- Bento 5: Dual-Mode Single Binary (GUI + CLI) -->
           <div class="bento-card">
             <div class="bento-card-content">
               <div class="bento-icon-wrapper">
@@ -472,7 +459,7 @@
               </div>
               <h3 class="bento-title">Dual-Mode Single Binary (GUI + CLI)</h3>
               <p class="bento-desc">
-                A single executable functions as both a background system tray utility and a headless CLI. Pass <code style="color: #38BDF8;">--status</code>, <code style="color: #38BDF8;">--clean</code>, or <code style="color: #38BDF8;">--aggressive</code> to script and automate across servers or CI/CD pipelines.
+                A single 456 KB executable functions as both a background notification-area daemon and a headless CLI. Pass flags like <kbd>--status</kbd> or <kbd>--clean</kbd> to integrate directly into automation pipelines.
               </p>
             </div>
             <div class="bento-meta">
@@ -481,7 +468,7 @@
             </div>
           </div>
 
-          <!-- Bento 6: 100% Native Rust & Win32 -->
+          <!-- Bento 6: Pure Rust 2021 Implementation -->
           <div class="bento-card">
             <div class="bento-card-content">
               <div class="bento-icon-wrapper">
@@ -491,9 +478,9 @@
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
               </div>
-              <h3 class="bento-title">100% Native Rust & Win32</h3>
+              <h3 class="bento-title">Zero Runtime Overhead</h3>
               <p class="bento-desc">
-                No bloated Electron. No hidden webviews. No runtime dependencies or external DLLs. Written in pure Rust 2021 with full Link-Time Optimization (LTO) producing a clean sub-500 KB machine executable.
+                No web views, no Electron shell, no .NET dependencies, and no external runtime DLLs. Compiled with Link-Time Optimization (LTO) into a clean, standalone PE binary.
               </p>
             </div>
             <div class="bento-meta">
@@ -508,13 +495,13 @@
     <!-- ====================================================================
          5-Tier Architecture Deep-Dive
          ==================================================================== -->
-    <section class="section" id="architecture" style="background: rgba(15, 23, 42, 0.6);">
-      <div class="container arch-container">
+    <section class="section" id="architecture">
+      <div class="container reveal-on-scroll">
         <div class="section-header">
           <span class="section-tag">Kernel Internals</span>
-          <h2 class="section-title">The 5-Tier NT Memory Purge Pipeline</h2>
+          <h2 class="section-title">The 5-Tier Memory Reclamation Pipeline</h2>
           <p class="section-desc">
-            Standard RAM cleaners naively call <code style="color: #38BDF8;">EmptyWorkingSet()</code> across every process, forcing active code into the pagefile. MemClean respects the Windows Virtual Memory Manager page state hierarchy.
+            Standard RAM cleaners naively call <code style="color: var(--pastel-red-text);">EmptyWorkingSet()</code> across every process, forcing active code into the pagefile. MemClean respects the Windows Virtual Memory Manager page state hierarchy.
           </p>
         </div>
 
@@ -535,7 +522,7 @@
             <h3 class="arch-step-title">Low-Priority Standby</h3>
             <div class="arch-step-call">MemoryPurgeLowPriorityStandbyList</div>
             <p class="arch-step-desc">
-              Surgically evicts Priority 0 cold standby pages while preserving frequently used hot memory cache.
+              Evicts Priority 0 cold standby pages while preserving frequently referenced hot memory cache.
             </p>
           </div>
 
@@ -545,7 +532,7 @@
             <h3 class="arch-step-title">Modified List Flush</h3>
             <div class="arch-step-call">MemoryFlushModifiedList</div>
             <p class="arch-step-desc">
-              Safely writes dirty pages to disk, transitioning them immediately into reclaimable Standby state.
+              Flushes dirty pages to disk, transitioning them immediately into reclaimable Standby state.
             </p>
           </div>
 
@@ -565,7 +552,7 @@
             <h3 class="arch-step-title">Filtered Working Sets</h3>
             <div class="arch-step-call">K32EmptyWorkingSet (Filtered)</div>
             <p class="arch-step-desc">
-              Trims idle background processes while strictly protecting the foreground game and critical system whitelist.
+              Trims background processes while strictly protecting the foreground window and critical system processes.
             </p>
           </div>
         </div>
@@ -574,28 +561,28 @@
         <div class="arch-callout-grid">
           <div class="arch-callout">
             <h3 class="arch-callout-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #EF4444;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--pastel-red-text);">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="15" y1="9" x2="9" y2="15"></line>
                 <line x1="9" y1="9" x2="15" y2="15"></line>
               </svg>
-              <span>Why Generic RAM Cleaners Cause Stuttering</span>
+              <span>Why Generic Cleaners Cause Stuttering</span>
             </h3>
             <p class="arch-callout-desc">
-              Generic cleaners call <code style="color: #EF4444;">EmptyWorkingSet()</code> indiscriminately on every running process. When your active game or browser loses its working set, Windows forces its active pages to disk or the pagefile. Seconds later, when the app tries to access that memory, a flood of hard page faults triggers severe frame drops, audio crackling, and disk thrashing.
+              Generic cleaners call <code style="color: var(--pastel-red-text);">EmptyWorkingSet()</code> indiscriminately on every running process. When your active game or browser loses its working set, Windows forces active pages to disk or the pagefile. Seconds later, when the app accesses that memory, hard page faults trigger frame drops, audio pops, and disk thrashing.
             </p>
           </div>
 
           <div class="arch-callout">
             <h3 class="arch-callout-title">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: var(--pastel-green-text);">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                 <polyline points="9 12 11 14 15 10"></polyline>
               </svg>
-              <span>How MemClean Guarantees Zero Stutter</span>
+              <span>How MemClean Prevents Page Faults</span>
             </h3>
             <p class="arch-callout-desc">
-              MemClean interacts with the Windows NT memory manager's internal page lists. Tiers 1&ndash;4 reclaim cached data and file buffers that processes are no longer using. When Game Guard is active, Tier 5 completely skips the active foreground window, keeping all game assets pinned in physical RAM at maximum speed.
+              MemClean interacts with the Windows NT memory manager internal page lists. Tiers 1&ndash;4 reclaim cached data and file buffers that processes are no longer using. When Game Guard is active, Tier 5 completely skips the active foreground window, keeping game assets pinned in physical RAM.
             </p>
           </div>
         </div>
@@ -606,12 +593,12 @@
          Benchmark & Comparison Matrix Table
          ==================================================================== -->
     <section class="section" id="comparison">
-      <div class="container">
+      <div class="container reveal-on-scroll">
         <div class="section-header">
           <span class="section-tag">Objective Comparison</span>
-          <h2 class="section-title">MemClean vs. The Alternatives</h2>
+          <h2 class="section-title">Technical Comparison Matrix</h2>
           <p class="section-desc">
-            Direct comparison against Sordum ReduceMemory (v1.6) and conventional generic cleaners.
+            Direct comparison between MemClean, Sordum ReduceMemory (v1.6), and standard background cleaners.
           </p>
         </div>
 
@@ -622,7 +609,7 @@
                 <th class="th-feature">Feature / Architecture</th>
                 <th class="th-memclean">
                   <span>MemClean</span>
-                  <span class="badge-winner">Recommended</span>
+                  <span class="badge-winner">Verified</span>
                 </th>
                 <th class="th-competitor">Sordum ReduceMemory (v1.6)</th>
                 <th class="th-generic">Generic RAM Cleaners</th>
@@ -726,11 +713,11 @@
                 </td>
               </tr>
               <tr>
-                <td><strong>Smart Game & Foreground Shield</strong></td>
+                <td><strong>Smart Game &amp; Foreground Shield</strong></td>
                 <td class="td-memclean">
                   <span class="status-badge status-yes">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span>Yes (0 Frame Stutter)</span>
+                    <span>Yes (Zero Frame Stutter)</span>
                   </span>
                 </td>
                 <td>
@@ -769,7 +756,7 @@
               </tr>
               <tr>
                 <td><strong>Binary Footprint</strong></td>
-                <td class="td-memclean">&lt; 500 KB</td>
+                <td class="td-memclean">456 KB</td>
                 <td>~1.2 MB</td>
                 <td>20 MB &ndash; 150 MB</td>
               </tr>
@@ -780,7 +767,7 @@
                 <td>None</td>
               </tr>
               <tr>
-                <td><strong>License & Auditing</strong></td>
+                <td><strong>License &amp; Auditing</strong></td>
                 <td class="td-memclean">Open Source (MIT)</td>
                 <td>Closed Source Freeware</td>
                 <td>Commercial / Adware</td>
@@ -795,12 +782,12 @@
          CLI Terminal Showcase
          ==================================================================== -->
     <section class="section" id="cli">
-      <div class="container">
+      <div class="container reveal-on-scroll">
         <div class="section-header">
           <span class="section-tag">Scriptable Interface</span>
           <h2 class="section-title">Headless Command-Line Automation</h2>
           <p class="section-desc">
-            Embed MemClean into your batch files, PowerShell maintenance scripts, game launchers, or CI runner environments.
+            Embed MemClean into batch files, PowerShell scripts, game launchers, or CI runner environments.
           </p>
         </div>
 
@@ -849,15 +836,82 @@ Working Sets:  5124 MB</pre>
     </section>
 
     <!-- ====================================================================
+         FAQ (Utilitarian Accordion)
+         ==================================================================== -->
+    <section class="section" id="faq">
+      <div class="container reveal-on-scroll">
+        <div class="section-header">
+          <span class="section-tag">Technical Answers</span>
+          <h2 class="section-title">Frequently Asked Questions</h2>
+          <p class="section-desc">
+            Implementation details on Windows NT virtual memory management and privileges.
+          </p>
+        </div>
+
+        <div class="faq-list">
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>How does MemClean differ from Windows' default memory manager?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Windows keeps files and cached data in the Standby list indefinitely until memory pressure forces eviction. Under intensive workloads like gaming or compilation, sudden allocation spikes can cause the memory manager to rapidly cycle pages, resulting in micro-stuttering. MemClean allows you to preemptively purge standby and modified pages into the Free List without eviction pressure.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Why does EmptyWorkingSet cause stutter in games, and how is it prevented?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Generic cleaners call <code style="color: var(--pastel-red-text);">EmptyWorkingSet()</code> across all PIDs. If called on an active DirectX or Vulkan title, textures and shader data are evicted from RAM to disk. When the engine accesses them milliseconds later, severe hard page faults drop frames. MemClean inspects <code style="color: var(--pastel-blue-text);">GetForegroundWindow()</code> and ignores active game processes during working set trims.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Does MemClean require administrator rights to run?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Yes, purging NT kernel memory lists (<code style="color: var(--pastel-blue-text);">MemoryPurgeStandbyList</code>, <code style="color: var(--pastel-blue-text);">MemoryFlushModifiedList</code>) requires <code style="color: var(--pastel-blue-text);">SeProfileSingleProcessPrivilege</code> and <code style="color: var(--pastel-blue-text);">SeIncreaseQuotaPrivilege</code>. MemClean automatically acquires these privileges via its token elevation module.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>How does zero-UAC scheduled task startup work?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Instead of the standard <code style="color: var(--pastel-blue-text);">HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code> registry key (which triggers a UAC prompt on every boot for elevated binaries), MemClean registers an entry with the Windows Task Scheduler configured with highest privileges. When you log in, Windows launches the tray icon silently in the background.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Can I run MemClean headlessly in CI/CD or server scripts?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Yes. MemClean uses the Win32 <code style="color: var(--pastel-blue-text);">AttachConsole()</code> API. When invoked from Command Prompt or PowerShell with arguments like <kbd>--status</kbd>, <kbd>--clean</kbd>, or <kbd>--aggressive</kbd>, it executes headlessly, emits structured stdout, and returns standard exit codes (0 for success).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
          Download & Quick Start Section
          ==================================================================== -->
     <section class="section" id="download">
-      <div class="container">
+      <div class="container reveal-on-scroll">
         <div class="section-header">
-          <span class="section-tag">Install & Deploy</span>
-          <h2 class="section-title">Get MemClean for Windows</h2>
+          <span class="section-tag">Install &amp; Deploy</span>
+          <h2 class="section-title">Acquire MemClean for Windows</h2>
           <p class="section-desc">
-            Clean, zero-telemetry executables signed and verified. Compatible with Windows 10 &amp; 11 (64-bit).
+            Clean, zero-telemetry executables compiled for Windows 10 &amp; 11 (64-bit).
           </p>
         </div>
 
@@ -875,13 +929,13 @@ Working Sets:  5124 MB</pre>
                 </svg>
               </div>
               <h3 class="download-card-title">Setup Installer</h3>
-              <p class="download-card-desc">Complete Windows installation with automated Task Scheduler zero-UAC startup.</p>
+              <p class="download-card-desc">Windows setup with automated Task Scheduler zero-UAC boot configuration.</p>
             </div>
 
             <ul class="download-specs-list">
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Installs to <code style="color: #38BDF8;">Program Files\MemClean</code></span>
+                <span>Installs to <code style="color: var(--pastel-blue-text);">Program Files\MemClean</code></span>
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -889,7 +943,7 @@ Working Sets:  5124 MB</pre>
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Includes clean Add/Remove uninstaller</span>
+                <span>Clean Add/Remove Programs uninstaller</span>
               </li>
             </ul>
 
@@ -916,21 +970,21 @@ Working Sets:  5124 MB</pre>
                 </svg>
               </div>
               <h3 class="download-card-title">Portable Edition</h3>
-              <p class="download-card-desc">Zero-install standalone binary. Run directly from USB drives or portable toolkits.</p>
+              <p class="download-card-desc">Standalone binary. Run directly from USB drives or portable toolkits.</p>
             </div>
 
             <ul class="download-specs-list">
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Single standalone <code style="color: #38BDF8;">memclean.exe</code> file</span>
+                <span>Single standalone <code style="color: var(--pastel-blue-text);">memclean.exe</code> executable</span>
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Stores config in <code style="color: #38BDF8;">%APPDATA%\MemClean</code></span>
+                <span>Stores config in <code style="color: var(--pastel-blue-text);">%APPDATA%\MemClean</code></span>
               </li>
               <li>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                <span>Zero registry clutter on exit</span>
+                <span>Zero registry modifications on exit</span>
               </li>
             </ul>
 
@@ -943,7 +997,7 @@ Working Sets:  5124 MB</pre>
                 </svg>
                 <span>Download memclean.exe</span>
               </a>
-              <div class="download-meta">~420 KB &bull; Portable Binary &bull; No Installation</div>
+              <div class="download-meta">~420 KB &bull; Standalone Binary</div>
             </div>
           </div>
 
@@ -960,8 +1014,8 @@ Working Sets:  5124 MB</pre>
               <p class="download-card-desc">Compile directly from source with Rust 2021 and Cargo toolchain.</p>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
-              <span style="font-size: 0.8125rem; color: #94A3B8;">Install via Cargo:</span>
+            <div style="display: flex; flex-direction: column; gap: var(--space-xs);">
+              <span style="font-size: 0.8125rem; color: var(--text-secondary);">Install via Cargo:</span>
               <div class="code-snippet-box">
                 <code>cargo install --git https://github.com/Xenonesis/memclean</code>
                 <button type="button" class="btn-icon-only btn-copy-snippet" data-copy="cargo install --git https://github.com/Xenonesis/memclean" aria-label="Copy Cargo install command" title="Copy snippet">
@@ -972,7 +1026,7 @@ Working Sets:  5124 MB</pre>
                 </button>
               </div>
 
-              <span style="font-size: 0.8125rem; color: #94A3B8; margin-top: 4px;">Or clone and build:</span>
+              <span style="font-size: 0.8125rem; color: var(--text-secondary); margin-top: 4px;">Or clone and build:</span>
               <div class="code-snippet-box">
                 <code>cargo build --release</code>
                 <button type="button" class="btn-icon-only btn-copy-snippet" data-copy="cargo build --release" aria-label="Copy Cargo build command" title="Copy snippet">
@@ -1007,13 +1061,13 @@ Working Sets:  5124 MB</pre>
       <div class="footer-top">
         <div class="footer-brand">
           <a href="#" class="brand-link" aria-label="MemClean Footer Brand Link">
-            <svg class="brand-icon" viewBox="0 0 256 256" width="34" height="34" fill="none" aria-hidden="true">
+            <svg class="brand-icon" viewBox="0 0 256 256" width="28" height="28" fill="none" aria-hidden="true">
               <path fill="#22C55E" d="M 36 52 C 36 40 44 32 56 32 L 80 32 L 128 80 L 176 32 L 200 32 C 212 32 220 40 220 52 L 220 208 C 220 218 212 224 200 224 L 172 224 C 164 224 160 218 160 210 L 160 96 L 128 128 L 96 96 L 96 210 C 96 218 92 224 84 224 L 56 224 C 44 224 36 218 36 208 Z" />
             </svg>
             <span>MemClean</span>
           </a>
           <p class="footer-tagline">
-            Ultra-lightweight, pure Rust Windows memory optimizer. Designed for gamers, developers, and power users who value zero frame stuttering.
+            Ultra-lightweight Windows memory optimizer written in pure Rust. Surgical NT kernel memory management with zero telemetry.
           </p>
         </div>
 
@@ -1062,10 +1116,10 @@ Working Sets:  5124 MB</pre>
 
   <!-- Toast Notification element for copy feedback -->
   <div class="toast-notice" id="toast" role="alert" aria-live="polite" aria-hidden="true">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
-    <span id="toast-text">Copied to clipboard!</span>
+    <span id="toast-text">Copied to clipboard</span>
   </div>
 
 </body>

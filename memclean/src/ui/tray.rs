@@ -3,10 +3,10 @@ use crate::core::memory;
 use crate::engine::cleaner;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW, CreateSolidBrush,
-    DeleteDC, DeleteObject, DrawTextW, FillRect, GetStockObject, SelectObject, SetBkMode,
+    CreateBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW, CreatePen, CreateSolidBrush,
+    DeleteDC, DeleteObject, DrawTextW, FillRect, RoundRect, SelectObject, SetBkMode,
     SetTextColor, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, FW_BOLD,
-    TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
+    PS_SOLID, TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
@@ -18,13 +18,33 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, FindWindowW, GetCursorPos, GetDlgItem, GetMessageW,
     GetSystemMetrics, IsWindowVisible, LoadIconW, PostQuitMessage, RegisterClassW, SendMessageW,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, TrackPopupMenu,
-    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_GROUPBOX, BS_PUSHBUTTON,
-    ICONINFO, MSG, SC_MINIMIZE,
+    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_GROUPBOX, BS_OWNERDRAW,
+    GetDlgCtrlID, ICONINFO, MSG, SC_MINIMIZE,
     SM_CXSCREEN, SM_CYSCREEN, SW_HIDE, SW_RESTORE, SW_SHOW, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
-    WM_CLOSE, WM_COMMAND, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
+    WM_CLOSE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
+    WM_DRAWITEM, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
     WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
+
+#[repr(C)]
+#[allow(non_snake_case, dead_code)]
+struct DRAWITEMSTRUCT {
+    pub CtlType: u32,
+    pub CtlID: u32,
+    pub itemID: u32,
+    pub itemAction: u32,
+    pub itemState: u32,
+    pub hwndItem: HWND,
+    pub hDC: windows_sys::Win32::Graphics::Gdi::HDC,
+    pub rcItem: RECT,
+    pub itemData: usize,
+}
+const ODS_SELECTED: u32 = 0x0001;
+
+static mut G_BG_BRUSH: windows_sys::Win32::Graphics::Gdi::HBRUSH = std::ptr::null_mut();
+static mut G_FONT_UI: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
+static mut G_FONT_BOLD: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 
 const WM_TRAYICON: u32 = WM_USER + 1;
 const TIMER_ID: usize = 1001;
@@ -50,13 +70,13 @@ pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMe
 
         let old_bm = SelectObject(hdc, hbm_color);
 
-        // High-contrast badge background color (BGR format):
+        // Utilitarian badge background color (BGR format):
         let bg_color = if percent < 70 {
-            0x00327D2E // Green (RGB: 46, 125, 50)
+            0x00346516 // Forest Green (#166534 -> BGR: 0x34, 0x65, 0x16)
         } else if percent < 85 {
-            0x000051E6 // Orange (RGB: 230, 81, 0)
+            0x000E4D85 // Deep Amber (#854D0E -> BGR: 0x0E, 0x4D, 0x85)
         } else {
-            0x002828C6 // Red (RGB: 198, 40, 40)
+            0x001B1B99 // Carmine Red (#991B1B -> BGR: 0x1B, 0x1B, 0x99)
         };
 
         let brush = CreateSolidBrush(bg_color);
@@ -73,8 +93,8 @@ pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMe
         SetTextColor(hdc, 0x00FFFFFF); // Pure white text
 
         let font = CreateFontW(
-            -11, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 0, 0, 0, 0, 0,
-            windows_sys::w!("Arial"),
+            -11, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 1, 0, 0, 5, 0,
+            windows_sys::w!("Segoe UI"),
         );
         let old_font = SelectObject(hdc, font);
 
@@ -105,8 +125,6 @@ pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMe
 
 const BST_CHECKED: usize = 1;
 const BST_UNCHECKED: usize = 0;
-const DEFAULT_GUI_FONT: i32 = 17;
-
 unsafe fn set_text(hwnd: HWND, id: i32, text: &str) {
     let ctrl = GetDlgItem(hwnd, id);
     if !ctrl.is_null() {
@@ -237,6 +255,16 @@ pub fn run_application(start_minimized: bool) {
         let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
         let app_icon = LoadIconW(hinstance, 1 as _);
 
+        G_BG_BRUSH = CreateSolidBrush(0x00FAFBFB); // Warm Bone #FBFBFA
+        G_FONT_UI = CreateFontW(
+            -14, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0,
+            windows_sys::w!("Segoe UI"),
+        );
+        G_FONT_BOLD = CreateFontW(
+            -14, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0,
+            windows_sys::w!("Segoe UI"),
+        );
+
         let wc = WNDCLASSW {
             style: 0,
             lpfnWndProc: Some(main_wnd_proc),
@@ -245,7 +273,7 @@ pub fn run_application(start_minimized: bool) {
             hInstance: hinstance,
             hIcon: app_icon,
             hCursor: std::ptr::null_mut(),
-            hbrBackground: 16 as _, // (COLOR_BTNFACE + 1)
+            hbrBackground: G_BG_BRUSH,
             lpszMenuName: std::ptr::null(),
             lpszClassName: class_name,
         };
@@ -279,45 +307,42 @@ pub fn run_application(start_minimized: bool) {
             SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
         }
 
-        let hfont = GetStockObject(DEFAULT_GUI_FONT);
-
-        let create_ctrl = |class: *const u16, text: *const u16, style: u32, cx: i32, cy: i32, cw: i32, ch: i32, id: i32| -> HWND {
+        let create_ctrl = |class: *const u16, text: *const u16, style: u32, cx: i32, cy: i32, cw: i32, ch: i32, id: i32, font: windows_sys::Win32::Graphics::Gdi::HFONT| -> HWND {
             let ctrl = CreateWindowExW(
                 0, class, text,
                 WS_CHILD | WS_VISIBLE | style,
                 cx, cy, cw, ch, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut()
             );
-            if !ctrl.is_null() && !hfont.is_null() {
-                SendMessageW(ctrl, WM_SETFONT, hfont as WPARAM, 1);
+            if !ctrl.is_null() && !font.is_null() {
+                SendMessageW(ctrl, WM_SETFONT, font as WPARAM, 1);
             }
             ctrl
         };
 
         // Memory statistics group box & labels
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!(" Physical RAM Statistics "), BS_GROUPBOX as u32, 16, 10, 372, 115, 0);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("RAM Used: Calculating..."), 0, 32, 34, 340, 22, 101);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Free / Available: Calculating..."), 0, 32, 60, 340, 22, 102);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Status: Ready"), 0, 32, 88, 340, 24, 103);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!(" Physical RAM Telemetry "), BS_GROUPBOX as u32, 16, 10, 372, 115, 0, G_FONT_BOLD);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("RAM Used: Calculating..."), 0, 32, 34, 340, 22, 101, G_FONT_BOLD);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Free / Available: Calculating..."), 0, 32, 60, 340, 22, 102, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Status: Ready"), 0, 32, 88, 340, 24, 103, G_FONT_UI);
 
-        // Action buttons
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Optimize Memory Now"), BS_PUSHBUTTON as u32, 16, 136, 185, 38, 201);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby"), BS_PUSHBUTTON as u32, 208, 136, 180, 38, 202);
+        // Action buttons (Flat Minimalist Owner-Drawn)
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Optimize Memory Now"), BS_OWNERDRAW as u32, 16, 136, 185, 38, 201, G_FONT_BOLD);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby"), BS_OWNERDRAW as u32, 208, 136, 180, 38, 202, G_FONT_UI);
 
         // Options group box & checkboxes
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!(" Optimization Options "), BS_GROUPBOX as u32, 16, 186, 372, 226, 0);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby Page List"), BS_AUTOCHECKBOX as u32, 32, 210, 340, 22, 301);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Low-Priority Standby Purge"), BS_AUTOCHECKBOX as u32, 32, 236, 340, 22, 302);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Flush Modified Page List"), BS_AUTOCHECKBOX as u32, 32, 262, 340, 22, 303);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim System File Cache"), BS_AUTOCHECKBOX as u32, 32, 288, 340, 22, 304);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim Background Working Sets"), BS_AUTOCHECKBOX as u32, 32, 314, 340, 22, 305);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Enable Game & Foreground Shield"), BS_AUTOCHECKBOX as u32, 32, 340, 340, 22, 306);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Auto-optimize when RAM exceeds 80%"), BS_AUTOCHECKBOX as u32, 32, 366, 340, 22, 307);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!(" Optimization Pipeline "), BS_GROUPBOX as u32, 16, 186, 372, 226, 0, G_FONT_BOLD);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby Page List"), BS_AUTOCHECKBOX as u32, 32, 210, 340, 22, 301, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Low-Priority Standby Purge"), BS_AUTOCHECKBOX as u32, 32, 236, 340, 22, 302, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Flush Modified Page List"), BS_AUTOCHECKBOX as u32, 32, 262, 340, 22, 303, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim System File Cache"), BS_AUTOCHECKBOX as u32, 32, 288, 340, 22, 304, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim Background Working Sets"), BS_AUTOCHECKBOX as u32, 32, 314, 340, 22, 305, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Enable Game & Foreground Shield"), BS_AUTOCHECKBOX as u32, 32, 340, 340, 22, 306, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Auto-optimize when RAM exceeds 80%"), BS_AUTOCHECKBOX as u32, 32, 366, 340, 22, 307, G_FONT_UI);
 
-        // Footer action buttons
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Save Settings"), BS_PUSHBUTTON as u32, 16, 424, 114, 32, 401);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Minimize to Tray"), BS_PUSHBUTTON as u32, 140, 424, 126, 32, 402);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Exit"), BS_PUSHBUTTON as u32, 276, 424, 112, 32, 403);
-
+        // Footer action buttons (Flat Minimalist Owner-Drawn)
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Save Settings"), BS_OWNERDRAW as u32, 16, 424, 114, 32, 401, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Minimize to Tray"), BS_OWNERDRAW as u32, 140, 424, 126, 32, 402, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Exit"), BS_OWNERDRAW as u32, 276, 424, 112, 32, 403, G_FONT_UI);
         load_config_to_controls(hwnd);
         update_stats_display(hwnd);
 
@@ -501,6 +526,105 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             }
             0
         }
+        WM_CTLCOLORSTATIC => {
+            let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
+            SetBkMode(hdc, TRANSPARENT as i32);
+            let ctrl_id = GetDlgCtrlID(lparam as HWND);
+            if ctrl_id == 101 { // RAM Used
+                SetTextColor(hdc, 0x00111111);
+            } else if ctrl_id == 103 { // Status
+                SetTextColor(hdc, 0x00787774); // Muted secondary text
+            } else {
+                SetTextColor(hdc, 0x00111111);
+            }
+            G_BG_BRUSH as LRESULT
+        }
+        WM_CTLCOLORBTN => {
+            let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
+            SetBkMode(hdc, TRANSPARENT as i32);
+            SetTextColor(hdc, 0x00111111);
+            G_BG_BRUSH as LRESULT
+        }
+        WM_CTLCOLORDLG => {
+            G_BG_BRUSH as LRESULT
+        }
+        WM_DRAWITEM => {
+            let dis = &*(lparam as *const DRAWITEMSTRUCT);
+            if dis.CtlID == 201 {
+                // Primary CTA: Solid off-black #111111, white text, 4px rounded rectangle
+                let is_selected = (dis.itemState & ODS_SELECTED) != 0;
+                let bg_color = if is_selected { 0x002E2E2E } else { 0x00111111 };
+                let brush = CreateSolidBrush(bg_color);
+                let pen = CreatePen(PS_SOLID as i32, 1, bg_color);
+                let old_brush = SelectObject(dis.hDC, brush);
+                let old_pen = SelectObject(dis.hDC, pen);
+                RoundRect(dis.hDC, dis.rcItem.left, dis.rcItem.top, dis.rcItem.right, dis.rcItem.bottom, 6, 6);
+                SelectObject(dis.hDC, old_pen);
+                SelectObject(dis.hDC, old_brush);
+                DeleteObject(pen);
+                DeleteObject(brush);
+
+                SetBkMode(dis.hDC, TRANSPARENT as i32);
+                SetTextColor(dis.hDC, 0x00FFFFFF);
+                let old_font = SelectObject(dis.hDC, G_FONT_BOLD);
+                let text = windows_sys::w!("Optimize Memory Now");
+                let mut rc = dis.rcItem;
+                DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(dis.hDC, old_font);
+                1
+            } else if dis.CtlID == 202 {
+                // Secondary Button: White background, hairline #EAEAEA border, off-black text
+                let is_selected = (dis.itemState & ODS_SELECTED) != 0;
+                let bg_color = if is_selected { 0x00EFEFEF } else { 0x00FFFFFF };
+                let brush = CreateSolidBrush(bg_color);
+                let pen = CreatePen(PS_SOLID as i32, 1, 0x00EAEAEA);
+                let old_brush = SelectObject(dis.hDC, brush);
+                let old_pen = SelectObject(dis.hDC, pen);
+                RoundRect(dis.hDC, dis.rcItem.left, dis.rcItem.top, dis.rcItem.right, dis.rcItem.bottom, 6, 6);
+                SelectObject(dis.hDC, old_pen);
+                SelectObject(dis.hDC, old_brush);
+                DeleteObject(pen);
+                DeleteObject(brush);
+
+                SetBkMode(dis.hDC, TRANSPARENT as i32);
+                SetTextColor(dis.hDC, 0x00111111);
+                let old_font = SelectObject(dis.hDC, G_FONT_UI);
+                let text = windows_sys::w!("Purge Standby");
+                let mut rc = dis.rcItem;
+                DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(dis.hDC, old_font);
+                1
+            } else if dis.CtlID >= 401 && dis.CtlID <= 403 {
+                // Footer buttons: White background, hairline #EAEAEA border, off-black text
+                let is_selected = (dis.itemState & ODS_SELECTED) != 0;
+                let bg_color = if is_selected { 0x00EFEFEF } else { 0x00FFFFFF };
+                let brush = CreateSolidBrush(bg_color);
+                let pen = CreatePen(PS_SOLID as i32, 1, 0x00EAEAEA);
+                let old_brush = SelectObject(dis.hDC, brush);
+                let old_pen = SelectObject(dis.hDC, pen);
+                RoundRect(dis.hDC, dis.rcItem.left, dis.rcItem.top, dis.rcItem.right, dis.rcItem.bottom, 6, 6);
+                SelectObject(dis.hDC, old_pen);
+                SelectObject(dis.hDC, old_brush);
+                DeleteObject(pen);
+                DeleteObject(brush);
+
+                SetBkMode(dis.hDC, TRANSPARENT as i32);
+                SetTextColor(dis.hDC, 0x00111111);
+                let old_font = SelectObject(dis.hDC, G_FONT_UI);
+                let text = match dis.CtlID {
+                    401 => windows_sys::w!("Save Settings"),
+                    402 => windows_sys::w!("Minimize to Tray"),
+                    403 => windows_sys::w!("Exit"),
+                    _ => windows_sys::w!(""),
+                };
+                let mut rc = dis.rcItem;
+                DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                SelectObject(dis.hDC, old_font);
+                1
+            } else {
+                0
+            }
+        }
         WM_SYSCOMMAND => {
             let cmd = (wparam & 0xFFF0) as u32;
             if cmd == SC_MINIMIZE {
@@ -516,6 +640,18 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             0
         }
         WM_DESTROY => {
+            if !G_BG_BRUSH.is_null() {
+                DeleteObject(G_BG_BRUSH);
+                G_BG_BRUSH = std::ptr::null_mut();
+            }
+            if !G_FONT_UI.is_null() {
+                DeleteObject(G_FONT_UI);
+                G_FONT_UI = std::ptr::null_mut();
+            }
+            if !G_FONT_BOLD.is_null() {
+                DeleteObject(G_FONT_BOLD);
+                G_FONT_BOLD = std::ptr::null_mut();
+            }
             PostQuitMessage(0);
             0
         }
