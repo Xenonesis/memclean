@@ -14,6 +14,18 @@ type NtQuerySystemInformationFn = unsafe extern "system" fn(
     return_length: *mut u32,
 ) -> i32;
 
+type NtSetTimerResolutionFn = unsafe extern "system" fn(
+    desired_resolution: u32,
+    set_resolution: u8,
+    current_resolution: *mut u32,
+) -> i32;
+
+type NtQueryTimerResolutionFn = unsafe extern "system" fn(
+    minimum_resolution: *mut u32,
+    maximum_resolution: *mut u32,
+    current_resolution: *mut u32,
+) -> i32;
+
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 pub struct SystemMemoryListInformation {
@@ -125,6 +137,50 @@ pub fn trim_system_file_cache() -> Result<(), String> {
             Ok(())
         } else {
             Err("SetSystemFileCacheSize failed".to_string())
+        }
+    }
+}
+
+pub fn set_timer_resolution(desired_100ns: u32, set: bool) -> Result<u32, String> {
+    unsafe {
+        let h_ntdll = GetModuleHandleA(b"ntdll.dll\0".as_ptr());
+        if h_ntdll.is_null() {
+            return Err("Failed to obtain ntdll.dll handle".to_string());
+        }
+        let proc = GetProcAddress(h_ntdll, b"NtSetTimerResolution\0".as_ptr());
+        if proc.is_none() {
+            return Err("Failed to resolve NtSetTimerResolution".to_string());
+        }
+        let nt_set: NtSetTimerResolutionFn = std::mem::transmute(proc);
+        let mut cur = 0u32;
+        let status = nt_set(desired_100ns, if set { 1 } else { 0 }, &mut cur);
+        if status >= 0 {
+            Ok(cur)
+        } else {
+            Err(format!("NtSetTimerResolution failed: {:#010X}", status))
+        }
+    }
+}
+
+pub fn query_timer_resolution() -> Result<(u32, u32, u32), String> {
+    unsafe {
+        let h_ntdll = GetModuleHandleA(b"ntdll.dll\0".as_ptr());
+        if h_ntdll.is_null() {
+            return Err("Failed to obtain ntdll.dll handle".to_string());
+        }
+        let proc = GetProcAddress(h_ntdll, b"NtQueryTimerResolution\0".as_ptr());
+        if proc.is_none() {
+            return Err("Failed to resolve NtQueryTimerResolution".to_string());
+        }
+        let nt_query: NtQueryTimerResolutionFn = std::mem::transmute(proc);
+        let mut min = 0u32;
+        let mut max = 0u32;
+        let mut cur = 0u32;
+        let status = nt_query(&mut min, &mut max, &mut cur);
+        if status >= 0 {
+            Ok((min, max, cur))
+        } else {
+            Err(format!("NtQueryTimerResolution failed: {:#010X}", status))
         }
     }
 }
