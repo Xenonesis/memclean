@@ -2,12 +2,14 @@ use crate::config::AppConfig;
 use crate::core::{ntdll, process};
 use crate::engine::guard;
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct CleanResult {
     pub standby_purged: bool,
     pub modified_flushed: bool,
     pub file_cache_trimmed: bool,
     pub processes_trimmed: usize,
+    pub pages_combined: usize,
+    pub mb_combined: f32,
 }
 
 pub fn perform_clean(config: &AppConfig, force_aggressive: bool) -> CleanResult {
@@ -67,5 +69,41 @@ pub fn perform_clean(config: &AppConfig, force_aggressive: bool) -> CleanResult 
         }
     }
 
+    // 5. Kernel Page Combining (de-duplication)
+    if config.tuning.combine_pages_on_clean || force_aggressive {
+        if let Ok(c) = crate::core::combine::combine_physical_memory() {
+            result.pages_combined = c.pages_combined;
+            result.mb_combined = c.mb_saved;
+        }
+    }
+
     result
+}
+
+pub fn purge_standby_only() -> bool {
+    ntdll::purge_standby_list().is_ok()
+}
+
+pub fn combine_pages_only() -> Result<crate::core::combine::CombineResult, String> {
+    crate::core::combine::combine_physical_memory()
+}
+
+pub fn trim_working_sets_only(config: &AppConfig) -> usize {
+    let fg_ctx = guard::get_foreground_context();
+    let mut count = 0;
+    if let Ok(procs) = process::enumerate_processes() {
+        let fg_pid = if config.policy.game_guard_enabled {
+            fg_ctx.map(|ctx| ctx.pid)
+        } else {
+            None
+        };
+        for p in procs {
+            if !guard::is_protected_process(&p.name, p.pid, fg_pid, &config.exclusions) {
+                if process::trim_process_working_set(p.pid).is_ok() {
+                    count += 1;
+                }
+            }
+        }
+    }
+    count
 }
