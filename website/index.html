@@ -378,9 +378,9 @@
                   <polyline points="2 12 12 17 22 12"></polyline>
                 </svg>
               </div>
-              <h3 class="bento-title">5-Tier NT Kernel Memory Purging</h3>
+              <h3 class="bento-title">5-Tier Purge &amp; ISLC Standby Cleaner</h3>
               <p class="bento-desc">
-                Directly invokes undocumented Windows NT kernel routines via <code style="color: var(--pastel-blue-text);">NtSetSystemInformation</code> and the filesystem cache manager. Purges Standby lists, Low-Priority standby, and modified page caches directly to the Free List without triggering disk thrashing or pagefile spikes.
+                Directly invokes undocumented Windows NT kernel routines via <code style="color: var(--pastel-blue-text);">NtSetSystemInformation</code> and the filesystem cache manager. Features an Intelligent Standby Cleaner (ISLC) that only purges when standby memory is high and free memory is low, preventing cache eviction churn.
               </p>
             </div>
             <div class="bento-meta">
@@ -398,9 +398,9 @@
                   <path d="m9 12 2 2 4-4"></path>
                 </svg>
               </div>
-              <h3 class="bento-title">Smart Game &amp; Foreground Shield</h3>
+              <h3 class="bento-title">0.5 ms Scheduler Timer &amp; Game Shield</h3>
               <p class="bento-desc">
-                Detects active fullscreen 3D DirectX/Vulkan windows and isolates their working sets from eviction. Optimizations are restricted strictly to standby cache, preventing 0.1% frame drops.
+                Locks Windows global timer resolution to 0.500 ms (2,000 Hz) via <code style="color: var(--pastel-blue-text);">NtSetTimerResolution</code> for competitive esports latency and smooth frame pacing, while shielding active DirectX/Vulkan game working sets from eviction.
               </p>
             </div>
             <div class="bento-meta">
@@ -417,9 +417,9 @@
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                 </svg>
               </div>
-              <h3 class="bento-title">Dynamic GDI System Tray Badge</h3>
+              <h3 class="bento-title">Kernel Page Combining &amp; Segmented Bar</h3>
               <p class="bento-desc">
-                Renders a dynamic 16&times;16 numeric RAM percentage icon right in your Windows taskbar. Threshold-based color coding without CPU wakeups or thread polling loops.
+                Calls NT class 130 (<code style="color: var(--pastel-blue-text);">SystemCombinePhysicalMemoryInformation</code>) to de-duplicate identical physical pages across Electron/Chrome apps into Copy-On-Write pages without disk I/O, visualized via a segmented GDI memory bar.
               </p>
             </div>
             <div class="bento-meta">
@@ -457,9 +457,9 @@
                   <line x1="12" y1="19" x2="20" y2="19"></line>
                 </svg>
               </div>
-              <h3 class="bento-title">Dual-Mode Single Binary (GUI + CLI)</h3>
+              <h3 class="bento-title">Machine-Readable JSON CLI &amp; EcoQoS</h3>
               <p class="bento-desc">
-                A single 456 KB executable functions as both a background notification-area daemon and a headless CLI. Pass flags like <kbd>--status</kbd> or <kbd>--clean</kbd> to integrate directly into automation pipelines.
+                Pass flags like <kbd>--stats --json</kbd> to integrate directly with Rainmeter or monitoring scripts. Toggle Windows 11 EcoQoS (Efficiency Mode) on background hogs straight from the dashboard.
               </p>
             </div>
             <div class="bento-meta">
@@ -800,8 +800,14 @@
               <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="clean">
                 --clean
               </button>
-              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="aggressive">
-                --aggressive
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="json">
+                --stats --json
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="timer">
+                --timer-res 0.5
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="combine">
+                --combine
               </button>
               <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="autostart">
                 --autostart

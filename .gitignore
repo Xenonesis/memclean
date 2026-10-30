@@ -4,3 +4,4 @@ dist/
 *.pdb
 *.obj
 Cargo.lock
+.superpowers/

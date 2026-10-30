@@ -433,6 +433,42 @@ Task Name:    MemCleanLogonAutoStart
 Run Level:    TASK_RUNLEVEL_HIGHEST
 Logon Action: Launch 'C:\\Program Files\\MemClean\\memclean.exe'
 Status:       Successfully configured. Zero UAC prompts will occur on reboot.`
+    },
+    json: {
+      cmd: 'memclean.exe --stats --json',
+      output: `{
+  "timestamp": 1730310240,
+  "memory": {
+    "total_mb": 16088,
+    "used_mb": 9236,
+    "free_mb": 52,
+    "zeroed_mb": 2004,
+    "standby_mb": 4795,
+    "modified_mb": 100,
+    "used_percent": 57
+  },
+  "timer_resolution": {
+    "current_ms": 0.500,
+    "minimum_ms": 15.625,
+    "maximum_ms": 0.500
+  },
+  "top_consumers": [
+    { "pid": 10564, "name": "explorer.exe", "working_set_mb": 592 },
+    { "pid": 7532, "name": "Code.exe", "working_set_mb": 362 }
+  ]
+}`
+    },
+    timer: {
+      cmd: 'memclean.exe --timer-res 0.5',
+      output: `[INFO] Initializing Windows high-resolution scheduler timer engine...
+[INFO] Invoked NtSetTimerResolution(5000, 1)... SUCCESS
+Active timer resolution: 0.500 ms (locked at 2,000 Hz)`
+    },
+    combine: {
+      cmd: 'memclean.exe --combine',
+      output: `[INFO] Invoked NtSetSystemInformation(130, SystemCombinePhysicalMemoryInformation)...
+[INFO] Scanned physical RAM pages for identical read-only content.
+Page combining executed: 14,210 duplicate pages merged (55.51 MB reclaimed).`
     }
   };
 

@@ -29,13 +29,16 @@ By interacting directly with undocumented NT kernel memory manager routines (`Nt
 
 ### Why MemClean?
 - **True Native Footprint:** Built on pure Win32 and NT kernel system calls with zero external DLL dependencies. Consumes **< 2 MB RAM** and **0.0% CPU** at idle.
-- **5-Tier Purge Engine:** Surgical control over Standby lists, Modified page lists, System File Cache, and background process working sets.
+- **ISLC Dual-Condition Standby Cleaner:** Automatically clears the Standby List only when standby memory is high AND available memory is low, avoiding cache eviction churn and eliminating game micro-stutters.
+- **Microsecond Timer Resolution Engine:** Locks the Windows scheduler timer resolution to **0.500 ms** (500 µs) or **1.000 ms** (`NtSetTimerResolution` / `timeBeginPeriod`) for competitive gaming and minimum input latency.
+- **Kernel Physical Page Combining:** Invokes undocumented `NtSetSystemInformation(130)` to de-duplicate identical physical memory pages (e.g., across multiple Electron apps, Chrome tabs, and shared DLLs) into Copy-On-Write single pages without disk I/O.
+- **Deep NT Memory Breakdown & Segmented GDI Bar:** Queries `NtQuerySystemInformation(80)` to visualize exact distribution across In-Use, Standby (P0–P7), Modified, and Free memory pools.
+- **Windows 11 EcoQoS (Efficiency Mode):** Toggles process execution speed throttling (`PROCESS_POWER_THROTTLING_EXECUTION_SPEED`) on heavy background processes directly from the dashboard.
 - **Smart Game Guard:** Automatically detects active fullscreen 3D engines and exempts foreground processes, guaranteeing zero micro-stuttering or 0.1% low drops.
 - **Silent Zero-UAC Elevation:** Integrates with the Windows Task Scheduler (`TASK_RUNLEVEL_HIGHEST`) to launch automatically at login with full administrator privileges without annoying UAC prompts.
-- **Dual-Mode Executable:** A single binary functions as both an interactive Win32 system tray daemon and a scriptable, headless CLI.
+- **Dual-Mode Executable:** A single binary functions as both an interactive Win32 system tray daemon and a scriptable, headless CLI with `--stats --json` support.
 - **Global Optimize Hotkey:** Optional `Ctrl+Alt+M` shortcut purges memory from anywhere, with a tray notification showing the reported RAM change.
-- **Live Process View:** Displays the five largest working sets, refreshes every five seconds, and offers per-process working-set trimming.
-
+- **Live Process View:** Displays top memory consumers, refreshes every five seconds, and offers per-process Trim and EcoQoS actions.
 ---
 
 ## Side-by-Side Comparison: MemClean vs. Sordum ReduceMemory
@@ -195,14 +198,18 @@ MemClean is a dual-mode binary. When invoked with command-line arguments, it aut
 | Command Flag | Description | Typical Use Case |
 | :--- | :--- | :--- |
 | `memclean.exe` *(no flags)* | Launches the interactive Win32 system tray daemon and GUI window. | Daily user mode, background monitoring. |
-| `memclean.exe --status` | Queries and outputs current RAM statistics (Used MB, %, Avail MB, Total MB). | Health check scripts, monitoring agents. |
-| `memclean.exe --clean` | Executes memory optimization according to policies defined in `config.toml`. | Scheduled maintenance, batch workflows. |
-| `memclean.exe --aggressive` | Forces an immediate aggressive purge of all 5 tiers (bypasses game shield). | Benchmarking, pre-game launch scripts. |
+| `memclean.exe --stats` / `--status` | Queries and outputs current RAM statistics and scheduler timer resolution. | Health check scripts, monitoring agents. |
+| `memclean.exe --stats --json` | Outputs complete structured JSON memory and process breakdown. | Rainmeter skins, monitoring dashboards, PowerShell automation. |
+| `memclean.exe --clean` / `-c` | Executes memory optimization according to policies defined in `memclean.toml`. | Scheduled maintenance, batch workflows. |
+| `memclean.exe --aggressive` / `-a` | Forces an immediate aggressive purge of all memory tiers (bypasses game shield). | Benchmarking, pre-game launch scripts. |
 | `memclean.exe --standby` | Purges only the Windows Standby list via `MemoryPurgeStandbyList`. | Eliminates micro-stutters during heavy gaming. |
+| `memclean.exe --combine` | Runs kernel physical page combining (RAM de-duplication) via NT class 130. | Memory reclaim across multiple Electron/browser apps. |
+| `memclean.exe --working-sets` | Trims working sets of all non-protected processes. | Process memory compaction. |
+| `memclean.exe --timer-res <0.5\|1.0>` | Requests and locks global scheduler timer resolution in milliseconds. | Low-latency gaming and audio production. |
+| `memclean.exe --silent` / `-s` | Suppresses console stdout (exit code 0 on success). | Silent batch scripts and Task Scheduler runs. |
 | `memclean.exe --autostart` | Registers elevated auto-start in Windows Task Scheduler (`schtasks`). | Post-install automated configuration. |
 | `memclean.exe --no-autostart`| Removes elevated auto-start task from Task Scheduler. | Deconfiguration / uninstallation. |
 | `memclean.exe --help` / `-h` | Prints command-line syntax and usage summary to the console. | CLI reference. |
-
 ### Scripting Examples
 
 **PowerShell Pre-Game Purge:**

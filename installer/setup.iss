@@ -23,7 +23,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostart"; Description: "Run MemClean automatically on Windows startup (Silent Elevation)"; GroupDescription: "Startup:"
 
 [Files]
-Source: "..\memclean\target\release\memclean.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\memclean.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\MemClean"; Filename: "{app}\memclean.exe"
