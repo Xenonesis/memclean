@@ -7,6 +7,56 @@ type NtSetSystemInformationFn = unsafe extern "system" fn(
     system_information_length: u32,
 ) -> i32;
 
+type NtQuerySystemInformationFn = unsafe extern "system" fn(
+    system_information_class: u32,
+    system_information: *mut c_void,
+    system_information_length: u32,
+    return_length: *mut u32,
+) -> i32;
+
+#[repr(C)]
+#[derive(Default, Debug, Clone, Copy)]
+pub struct SystemMemoryListInformation {
+    pub zero_page_count: usize,
+    pub free_page_count: usize,
+    pub modified_page_count: usize,
+    pub modified_no_write_page_count: usize,
+    pub bad_page_count: usize,
+    pub page_count_by_priority: [usize; 8],
+    pub repurposed_pages_by_priority: [usize; 8],
+    pub modified_page_count_page_file: usize,
+}
+
+pub fn query_system_memory_list() -> Result<SystemMemoryListInformation, String> {
+    unsafe {
+        let h_ntdll = GetModuleHandleA(b"ntdll.dll\0".as_ptr());
+        if h_ntdll.is_null() {
+            return Err("Failed to obtain ntdll.dll module handle".to_string());
+        }
+
+        let proc = GetProcAddress(h_ntdll, b"NtQuerySystemInformation\0".as_ptr());
+        if proc.is_none() {
+            return Err("Failed to resolve NtQuerySystemInformation in ntdll".to_string());
+        }
+
+        let nt_query_sys_info: NtQuerySystemInformationFn = std::mem::transmute(proc);
+        let mut info = SystemMemoryListInformation::default();
+        let mut ret_len = 0u32;
+        let status = nt_query_sys_info(
+            SYSTEM_MEMORY_LIST_INFORMATION,
+            &mut info as *mut _ as *mut c_void,
+            std::mem::size_of::<SystemMemoryListInformation>() as u32,
+            &mut ret_len,
+        );
+
+        if status >= 0 {
+            Ok(info)
+        } else {
+            Err(format!("NtQuerySystemInformation failed with NTSTATUS: {:#010X}", status))
+        }
+    }
+}
+
 const SYSTEM_MEMORY_LIST_INFORMATION: u32 = 80;
 
 #[repr(u32)]
