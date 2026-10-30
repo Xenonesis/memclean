@@ -1,15 +1,16 @@
 use crate::config::AppConfig;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateFontW, CreatePen, CreateSolidBrush, DeleteObject, DrawTextW, RoundRect, SelectObject,
-    SetBkMode, SetTextColor, PS_SOLID, TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
+    BeginPaint, EndPaint, PAINTSTRUCT,
+    CreateFontW, CreatePen, CreateSolidBrush, DeleteObject, DrawTextW, FillRect, LineTo, MoveToEx,
+    RoundRect, SelectObject, SetBkMode, SetTextColor, PS_SOLID, TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW,
     IsDialogMessageW, LoadIconW, MessageBoxW, RegisterClassW, SendMessageW, ShowWindow,
     BS_AUTOCHECKBOX, BS_OWNERDRAW, MB_ICONINFORMATION, MB_OK, MSG, SW_SHOW,
     WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
-    WM_DRAWITEM, WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+    WM_DRAWITEM, WM_ERASEBKGND, WM_PAINT, WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
 
 #[repr(C)]
@@ -28,8 +29,11 @@ struct DRAWITEMSTRUCT {
 const ODS_SELECTED: u32 = 0x0001;
 
 static mut D_BG_BRUSH: windows_sys::Win32::Graphics::Gdi::HBRUSH = std::ptr::null_mut();
+static mut D_CARD_BRUSH: windows_sys::Win32::Graphics::Gdi::HBRUSH = std::ptr::null_mut();
+static mut D_BORDER_PEN: windows_sys::Win32::Graphics::Gdi::HPEN = std::ptr::null_mut();
 static mut D_FONT_UI: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut D_FONT_BOLD: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
+static mut D_FONT_SUBHEADER: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 
 pub fn show_settings_dialog(_parent: HWND) {
     unsafe {
@@ -38,12 +42,19 @@ pub fn show_settings_dialog(_parent: HWND) {
         let app_icon = LoadIconW(hinstance, 1 as _);
 
         D_BG_BRUSH = CreateSolidBrush(0x00FAFBFB); // Warm Bone #FBFBFA
+        D_CARD_BRUSH = CreateSolidBrush(0x00FFFFFF); // Pure White #FFFFFF
+        D_BORDER_PEN = CreatePen(PS_SOLID as i32, 1, 0x00EAEAEA); // Hairline #EAEAEA
+
         D_FONT_UI = CreateFontW(
-            -14, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0,
+            -13, 0, 0, 0, 400, 0, 0, 0, 1, 0, 0, 5, 0,
             windows_sys::w!("Segoe UI"),
         );
         D_FONT_BOLD = CreateFontW(
-            -14, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0,
+            -13, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0,
+            windows_sys::w!("Segoe UI"),
+        );
+        D_FONT_SUBHEADER = CreateFontW(
+            -11, 0, 0, 0, 600, 0, 0, 0, 1, 0, 0, 5, 0,
             windows_sys::w!("Segoe UI"),
         );
 
@@ -66,7 +77,7 @@ pub fn show_settings_dialog(_parent: HWND) {
             class_name,
             windows_sys::w!("MemClean Settings"),
             WS_OVERLAPPEDWINDOW & !(0x00010000 | 0x00040000), // Disable maximize & resize
-            200, 200, 380, 310,
+            200, 200, 396, 370,
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -81,7 +92,7 @@ pub fn show_settings_dialog(_parent: HWND) {
             let ctrl = CreateWindowExW(
                 0, windows_sys::w!("BUTTON"), text,
                 WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-                24, cy, 320, 24, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut(),
+                28, cy, 324, 22, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut(),
             );
             if !ctrl.is_null() && !D_FONT_UI.is_null() {
                 SendMessageW(ctrl, WM_SETFONT, D_FONT_UI as WPARAM, 1);
@@ -89,19 +100,19 @@ pub fn show_settings_dialog(_parent: HWND) {
             ctrl
         };
 
-        // Checkboxes for features
-        create_chk(windows_sys::w!("Purge Standby Page List"), 24, 201);
-        create_chk(windows_sys::w!("Low-Priority Standby Purge"), 54, 202);
-        create_chk(windows_sys::w!("Flush Modified Page List"), 84, 203);
-        create_chk(windows_sys::w!("Trim System File Cache"), 114, 204);
-        create_chk(windows_sys::w!("Trim Background Working Sets"), 144, 205);
-        create_chk(windows_sys::w!("Enable Game & Foreground Shield"), 174, 206);
+        // Checkboxes for features (inside card, seamless background)
+        create_chk(windows_sys::w!("Purge Standby Page List"), 58, 201);
+        create_chk(windows_sys::w!("Low-Priority Standby Purge"), 86, 202);
+        create_chk(windows_sys::w!("Flush Modified Page List"), 114, 203);
+        create_chk(windows_sys::w!("Trim System File Cache"), 142, 204);
+        create_chk(windows_sys::w!("Trim Background Working Sets"), 170, 205);
+        create_chk(windows_sys::w!("Enable Game && Foreground Shield"), 198, 206);
 
         // Flat Minimalist Save & Close button (BS_OWNERDRAW)
         let btn = CreateWindowExW(
             0, windows_sys::w!("BUTTON"), windows_sys::w!("Save and Close"),
             WS_CHILD | WS_VISIBLE | BS_OWNERDRAW as u32,
-            24, 218, 320, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            16, 276, 348, 38, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !btn.is_null() && !D_FONT_BOLD.is_null() {
             SendMessageW(btn, WM_SETFONT, D_FONT_BOLD as WPARAM, 1);
@@ -120,17 +131,49 @@ pub fn show_settings_dialog(_parent: HWND) {
 
 unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     match msg {
+        WM_ERASEBKGND => 1,
+        WM_PAINT => {
+            let mut ps: PAINTSTRUCT = std::mem::zeroed();
+            let hdc = BeginPaint(hwnd, &mut ps);
+
+            let mut client_rc: RECT = std::mem::zeroed();
+            GetClientRect(hwnd, &mut client_rc);
+            FillRect(hdc, &client_rc, D_BG_BRUSH);
+
+            // Options Card
+            let old_brush = SelectObject(hdc, D_CARD_BRUSH);
+            let old_pen = SelectObject(hdc, D_BORDER_PEN);
+            RoundRect(hdc, 16, 16, 364, 260, 12, 12);
+
+            // Card Header
+            SetBkMode(hdc, TRANSPARENT as i32);
+            SetTextColor(hdc, 0x00747778); // Muted gray #787774
+            let old_font = SelectObject(hdc, D_FONT_SUBHEADER);
+            let header = windows_sys::w!("OPTIMIZATION POLICIES");
+            let mut h_rc = RECT { left: 28, top: 26, right: 350, bottom: 42 };
+            DrawTextW(hdc, header, -1, &mut h_rc, DT_SINGLELINE);
+
+            // Hairline divider
+            MoveToEx(hdc, 28, 46, std::ptr::null_mut());
+            LineTo(hdc, 352, 46);
+
+            SelectObject(hdc, old_brush);
+            SelectObject(hdc, old_pen);
+            SelectObject(hdc, old_font);
+            EndPaint(hwnd, &ps);
+            0
+        }
         WM_CTLCOLORSTATIC => {
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, 0x00111111);
-            D_BG_BRUSH as LRESULT
+            D_CARD_BRUSH as LRESULT // Checkbox background matches white card
         }
         WM_CTLCOLORBTN => {
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, 0x00111111);
-            D_BG_BRUSH as LRESULT
+            D_CARD_BRUSH as LRESULT
         }
         WM_CTLCOLORDLG => {
             D_BG_BRUSH as LRESULT
@@ -182,6 +225,14 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 DeleteObject(D_BG_BRUSH);
                 D_BG_BRUSH = std::ptr::null_mut();
             }
+            if !D_CARD_BRUSH.is_null() {
+                DeleteObject(D_CARD_BRUSH);
+                D_CARD_BRUSH = std::ptr::null_mut();
+            }
+            if !D_BORDER_PEN.is_null() {
+                DeleteObject(D_BORDER_PEN);
+                D_BORDER_PEN = std::ptr::null_mut();
+            }
             if !D_FONT_UI.is_null() {
                 DeleteObject(D_FONT_UI);
                 D_FONT_UI = std::ptr::null_mut();
@@ -189,6 +240,10 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             if !D_FONT_BOLD.is_null() {
                 DeleteObject(D_FONT_BOLD);
                 D_FONT_BOLD = std::ptr::null_mut();
+            }
+            if !D_FONT_SUBHEADER.is_null() {
+                DeleteObject(D_FONT_SUBHEADER);
+                D_FONT_SUBHEADER = std::ptr::null_mut();
             }
             0
         }
