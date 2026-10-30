@@ -3,29 +3,33 @@ use crate::core::memory;
 use crate::engine::cleaner;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    CreateCompatibleDC, CreateDIBSection, CreateFontW, DeleteDC, DeleteObject, GetStockObject,
-    SelectObject, SetBkMode, SetTextColor, TextOutW, BITMAPINFO, BITMAPINFOHEADER, BI_RGB,
-    DIB_RGB_COLORS, FW_BOLD, TRANSPARENT,
+    CreateBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW, CreateSolidBrush,
+    DeleteDC, DeleteObject, DrawTextW, FillRect, GetStockObject, SelectObject, SetBkMode,
+    SetTextColor, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, FW_BOLD,
+    TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
     NIM_ADD, NIM_DELETE, NIM_MODIFY,
 };
+use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
-    DispatchMessageW, FindWindowW, GetCursorPos, GetDlgItem, GetMessageW, GetSystemMetrics,
-    PostQuitMessage, RegisterClassW, SendMessageW, SetForegroundWindow, SetTimer, SetWindowTextW,
-    ShowWindow, TrackPopupMenu, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_GROUPBOX,
-    BS_PUSHBUTTON, ICONINFO, MSG, SM_CXSCREEN, SM_CYSCREEN, SW_HIDE, SW_RESTORE, SW_SHOW,
-    TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_CLOSE, WM_COMMAND, WM_DESTROY, WM_LBUTTONDBLCLK,
-    WM_LBUTTONUP, WM_RBUTTONUP, WM_SETFONT, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
+    DispatchMessageW, FindWindowW, GetCursorPos, GetDlgItem, GetMessageW,
+    GetSystemMetrics, IsWindowVisible, PostQuitMessage, RegisterClassW, SendMessageW,
+    SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, TrackPopupMenu,
+    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_GROUPBOX, BS_PUSHBUTTON,
+    ICONINFO, MSG, SC_MINIMIZE,
+    SM_CXSCREEN, SM_CYSCREEN, SW_HIDE, SW_RESTORE, SW_SHOW, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
+    WM_CLOSE, WM_COMMAND, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
+    WM_SETFONT, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
 const WM_TRAYICON: u32 = WM_USER + 1;
 const TIMER_ID: usize = 1001;
 
-fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
+pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
     unsafe {
         let hdc = CreateCompatibleDC(std::ptr::null_mut());
 
@@ -39,31 +43,44 @@ fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessag
 
         let mut bits: *mut std::ffi::c_void = std::ptr::null_mut();
         let hbm_color = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut bits, std::ptr::null_mut(), 0);
-        let hbm_mask = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut bits, std::ptr::null_mut(), 0);
+
+        // 1-bit monochrome mask (16x16 bits = 16 rows of 2 bytes = 32 bytes of 0 -> 0 is opaque)
+        let mask_bytes = [0u8; 32];
+        let hbm_mask = CreateBitmap(16, 16, 1, 1, mask_bytes.as_ptr() as _);
 
         let old_bm = SelectObject(hdc, hbm_color);
 
-        // Color based on memory usage: Green < 70%, Yellow 70-85%, Red > 85%
-        let text_color = if percent < 70 {
-            0x002E7D32 // Green
+        // High-contrast badge background color (BGR format):
+        let bg_color = if percent < 70 {
+            0x00327D2E // Green (RGB: 46, 125, 50)
         } else if percent < 85 {
-            0x00F57C00 // Orange
+            0x000051E6 // Orange (RGB: 230, 81, 0)
         } else {
-            0x00C62828 // Red
+            0x002828C6 // Red (RGB: 198, 40, 40)
         };
 
+        let brush = CreateSolidBrush(bg_color);
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 16,
+            bottom: 16,
+        };
+        FillRect(hdc, &rect, brush);
+        DeleteObject(brush);
+
         SetBkMode(hdc, TRANSPARENT as i32);
-        SetTextColor(hdc, text_color);
+        SetTextColor(hdc, 0x00FFFFFF); // Pure white text
 
         let font = CreateFontW(
-            12, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 0, 0, 0, 0, 0,
+            -11, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 0, 0, 0, 0, 0,
             windows_sys::w!("Arial"),
         );
         let old_font = SelectObject(hdc, font);
 
         let text = format!("{:02}", percent.min(99));
         let wide: Vec<u16> = text.encode_utf16().collect();
-        TextOutW(hdc, 0, 1, wide.as_ptr(), wide.len() as i32);
+        DrawTextW(hdc, wide.as_ptr(), wide.len() as i32, &mut rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
         SelectObject(hdc, old_font);
         DeleteObject(font);
@@ -306,9 +323,16 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 GetCursorPos(&mut pt);
                 SetForegroundWindow(hwnd);
                 show_tray_menu(hwnd, pt.x, pt.y);
-            } else if event == WM_LBUTTONDBLCLK || event == WM_LBUTTONUP {
+            } else if event == WM_LBUTTONDBLCLK {
                 ShowWindow(hwnd, SW_RESTORE);
                 SetForegroundWindow(hwnd);
+            } else if event == WM_LBUTTONUP {
+                if IsWindowVisible(hwnd) != 0 {
+                    ShowWindow(hwnd, SW_HIDE);
+                } else {
+                    ShowWindow(hwnd, SW_RESTORE);
+                    SetForegroundWindow(hwnd);
+                }
             }
             0
         }
@@ -326,8 +350,8 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
                 nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
                 nid.hWnd = hwnd;
-                nid.uID = 1;
-                nid.uFlags = NIF_ICON | NIF_TIP;
+                nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+                nid.uCallbackMessage = WM_TRAYICON;
                 nid.hIcon = new_icon;
 
                 let tip = format!("MemClean: {}% RAM Used ({} MB Free)\0", stats.used_percent, stats.avail_phys_mb);
@@ -378,6 +402,15 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 _ => {}
             }
             0
+        }
+        WM_SYSCOMMAND => {
+            let cmd = (wparam & 0xFFF0) as u32;
+            if cmd == SC_MINIMIZE {
+                ShowWindow(hwnd, SW_HIDE);
+                0
+            } else {
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
         }
         WM_CLOSE => {
             // Minimize to tray on close
