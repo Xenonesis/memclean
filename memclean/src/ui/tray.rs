@@ -8,7 +8,7 @@ use windows_sys::Win32::Graphics::Gdi::{
     CreateBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW, CreatePen, CreateSolidBrush,
     DeleteDC, DeleteObject, DrawTextW, FillRect, GetStockObject, LineTo, MoveToEx, RoundRect, SelectObject, SetBkMode,
     SetTextColor, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, FW_BOLD,
-    NULL_PEN, PS_SOLID, TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
+    NULL_PEN, PS_SOLID, TRANSPARENT, DT_CENTER, DT_RIGHT, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::Shell::{
     Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
@@ -271,10 +271,45 @@ unsafe fn is_checked(hwnd: HWND, id: i32) -> bool {
     }
 }
 
+pub fn calculate_memory_bar_segments(
+    total_mb: u64,
+    used_mb: u64,
+    standby_mb: u64,
+    modified_mb: u64,
+    bar_width: i32,
+) -> (i32, i32, i32, i32) {
+    if total_mb == 0 || bar_width <= 0 {
+        return (0, 0, 0, bar_width.max(0));
+    }
+    let in_use_w = (((used_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
+    let standby_w = (((standby_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
+    let mod_w = (((modified_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
+    let allocated = in_use_w + standby_w + mod_w;
+    let remaining_w = (bar_width - allocated).max(0);
+    (in_use_w, standby_w, mod_w, remaining_w)
+}
+
+pub fn format_tray_tooltip(percent: u32, standby_mb: u64, timer_res_ms: f32) -> String {
+    format!("MemClean: {}% | Standby: {}MB | Timer: {:.1}ms", percent, standby_mb, timer_res_ms)
+}
+
 unsafe fn update_stats_display(hwnd: HWND) {
-    if let Ok(stats) = memory::get_memory_stats() {
+    if let Ok(stats) = memory::get_extended_memory_stats() {
+        if let Ok(mut lock) = G_EXT_STATS.lock() {
+            *lock = Some(stats);
+        }
         G_USED_PERCENT = stats.used_percent;
-        let used_str = format!("RAM Used: {}% ({} MB / {} MB)", stats.used_percent, stats.used_phys_mb, stats.total_phys_mb);
+        let used_str = format!("RAM Used: {} MB ({}%)", stats.used_phys_mb, stats.used_percent);
+        let legend_str = format!(
+            "Standby: {} MB | Free: {} MB | Mod: {} MB",
+            stats.standby_total_mb, stats.free_phys_mb, stats.modified_mb
+        );
+        set_text(hwnd, 101, &used_str);
+        set_text(hwnd, 102, &legend_str);
+        InvalidateRect(hwnd, std::ptr::null(), 0);
+    } else if let Ok(stats) = memory::get_memory_stats() {
+        G_USED_PERCENT = stats.used_percent;
+        let used_str = format!("RAM Used: {} MB ({}%)", stats.used_phys_mb, stats.used_percent);
         let avail_str = format!("Free / Available: {} MB", stats.avail_phys_mb);
         set_text(hwnd, 101, &used_str);
         set_text(hwnd, 102, &avail_str);
@@ -290,14 +325,17 @@ unsafe fn update_top_processes(hwnd: HWND) {
 
     for index in 0..5 {
         let label_id = 105 + index as i32;
-        let button_id = 601 + index as i32;
+        let trim_btn_id = 601 + index as i32;
+        let eco_btn_id = 701 + index as i32;
         if let Some(process) = top.get(index) {
-            let name = process.name.chars().take(28).collect::<String>();
+            let name = process.name.chars().take(22).collect::<String>();
             set_text(hwnd, label_id, &format!("{}  {} MB", name, process.working_set_mb));
-            ShowWindow(GetDlgItem(hwnd, button_id), SW_SHOW);
+            ShowWindow(GetDlgItem(hwnd, trim_btn_id), SW_SHOW);
+            ShowWindow(GetDlgItem(hwnd, eco_btn_id), SW_SHOW);
         } else {
             set_text(hwnd, label_id, "");
-            ShowWindow(GetDlgItem(hwnd, button_id), SW_HIDE);
+            ShowWindow(GetDlgItem(hwnd, trim_btn_id), SW_HIDE);
+            ShowWindow(GetDlgItem(hwnd, eco_btn_id), SW_HIDE);
         }
     }
 }
@@ -313,7 +351,9 @@ static CACHED_CONFIG: Mutex<Option<AppConfig>> = Mutex::new(None);
 static LAST_AUTO_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
 static LAST_PERIODIC_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
 static TOP_PROCESSES: Mutex<Vec<crate::core::process::ProcessMemUsage>> = Mutex::new(Vec::new());
-
+static G_EXT_STATS: Mutex<Option<crate::core::memory::ExtendedMemoryStats>> = Mutex::new(None);
+static G_TIMER_GUARD: Mutex<Option<crate::core::timer_res::TimerResolutionGuard>> = Mutex::new(None);
+static G_IDLE_CLEANED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 fn get_config() -> AppConfig {
     let mut lock = CACHED_CONFIG.lock().unwrap();
     if lock.is_none() {
@@ -504,23 +544,32 @@ pub fn run_application(start_minimized: bool) {
         create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Free / Available: Calculating..."), 0, 22, 68, 340, 18, 102, G_FONT_UI);
         create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Status: Ready"), 0, 22, 88, 340, 18, 103, G_FONT_UI);
 
-        // Action buttons (Flat Minimalist Owner-Drawn)
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Optimize Memory Now"), BS_OWNERDRAW as u32, 12, 134, 176, 32, 201, G_FONT_BOLD);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby"), BS_OWNERDRAW as u32, 196, 134, 176, 32, 202, G_FONT_BOLD);
+        // Action buttons (Flat Minimalist Owner-Drawn Ribbon)
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Optimize All"), BS_OWNERDRAW as u32, 12, 134, 136, 32, 201, G_FONT_BOLD);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby"), BS_OWNERDRAW as u32, 154, 134, 110, 32, 202, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Combine Pages"), BS_OWNERDRAW as u32, 270, 134, 102, 32, 203, G_FONT_UI);
 
-        // Top 5 RAM Consumers card rows and per-process trim actions
+        // Top 5 RAM Consumers card rows with per-process Trim and Eco actions
         create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("TOP 5 RAM CONSUMERS"), 0, 22, 178, 200, 14, 104, G_FONT_SUBHEADER);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Loading..."), 0, 22, 202, 286, 16, 105, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 201, 44, 18, 601, G_FONT_UI);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 216, 286, 16, 106, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 215, 44, 18, 602, G_FONT_UI);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 230, 286, 16, 107, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 229, 44, 18, 603, G_FONT_UI);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 244, 286, 16, 108, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 243, 44, 18, 604, G_FONT_UI);
-        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 258, 286, 16, 109, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 257, 44, 18, 605, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Loading..."), 0, 22, 202, 240, 16, 105, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 268, 201, 44, 18, 601, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Eco"), BS_OWNERDRAW as u32, 318, 201, 44, 18, 701, G_FONT_UI);
 
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 216, 240, 16, 106, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 268, 215, 44, 18, 602, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Eco"), BS_OWNERDRAW as u32, 318, 215, 44, 18, 702, G_FONT_UI);
+
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 230, 240, 16, 107, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 268, 229, 44, 18, 603, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Eco"), BS_OWNERDRAW as u32, 318, 229, 44, 18, 703, G_FONT_UI);
+
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 244, 240, 16, 108, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 268, 243, 44, 18, 604, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Eco"), BS_OWNERDRAW as u32, 318, 243, 44, 18, 704, G_FONT_UI);
+
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 258, 240, 16, 109, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 268, 257, 44, 18, 605, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Eco"), BS_OWNERDRAW as u32, 318, 257, 44, 18, 705, G_FONT_UI);
         // Card 2: Optimization Pipeline Checkboxes
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby Page List"), BS_AUTOCHECKBOX as u32, 22, 322, 340, 20, 301, G_FONT_UI);
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Low-Priority Standby Purge"), BS_AUTOCHECKBOX as u32, 22, 343, 340, 20, 302, G_FONT_UI);
@@ -693,6 +742,42 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         }
                     }
                 }
+                let ext_stats = G_EXT_STATS.lock().ok().and_then(|lock| *lock);
+                // 3. ISLC dual condition check
+                if config.triggers.islc_enabled {
+                    if let Some(ext) = ext_stats {
+                        if crate::engine::islc::should_islc_purge(&ext, config.triggers.islc_standby_mb, config.triggers.islc_free_mb) {
+                            cleaner::purge_standby_only();
+                            set_text(hwnd, 103, "Status: ISLC auto-purged standby list.");
+                        }
+                    }
+                }
+
+                // 4. Inactivity / AFK Idle clean check
+                if config.triggers.idle_clean_enabled {
+                    let idle_sec = crate::engine::idle::get_user_idle_seconds();
+                    if idle_sec < 5 {
+                        G_IDLE_CLEANED.store(false, std::sync::atomic::Ordering::Relaxed);
+                    } else if crate::engine::idle::should_idle_clean(config.triggers.idle_seconds, G_IDLE_CLEANED.load(std::sync::atomic::Ordering::Relaxed)) {
+                        let _ = cleaner::perform_clean(&config, false);
+                        G_IDLE_CLEANED.store(true, std::sync::atomic::Ordering::Relaxed);
+                        set_text(hwnd, 103, "Status: Auto-cleaned while idle.");
+                    }
+                }
+
+                // 5. Sync timer resolution guard
+                let timer_mode = config.tuning.timer_mode_enum();
+                if let Ok(mut guard_lock) = G_TIMER_GUARD.lock() {
+                    if guard_lock.is_none() {
+                        let mut guard = crate::core::timer_res::TimerResolutionGuard::new();
+                        let _ = guard.set_mode(timer_mode);
+                        *guard_lock = Some(guard);
+                    } else if let Some(guard) = guard_lock.as_mut() {
+                        if guard.current_mode() != timer_mode {
+                            let _ = guard.set_mode(timer_mode);
+                        }
+                    }
+                }
 
                 update_stats_display(hwnd);
 
@@ -704,7 +789,9 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 nid.uCallbackMessage = WM_TRAYICON;
                 nid.hIcon = new_icon;
 
-                let tip = format!("MemClean: {}% RAM Used ({} MB Free)\0", stats.used_percent, stats.avail_phys_mb);
+                let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+                let standby_mb = ext_stats.map_or(0, |s| s.standby_total_mb);
+                let tip = format!("{}\0", format_tray_tooltip(stats.used_percent, standby_mb, cur_res));
                 let tip_wide: Vec<u16> = tip.encode_utf16().collect();
                 let copy_len = tip_wide.len().min(nid.szTip.len());
                 nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
@@ -737,6 +824,29 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let _ = crate::core::ntdll::purge_standby_list();
                     set_text(hwnd, 103, "Status: Standby list purged.");
                     update_stats_display(hwnd);
+                }
+                203 | 507 => { // Combine Pages
+                    match cleaner::combine_pages_only() {
+                        Ok(c) => set_text(hwnd, 103, &format!("Status: Combined {} pages ({:.1} MB saved).", c.pages_combined, c.mb_saved)),
+                        Err(e) => set_text(hwnd, 103, &format!("Status: Combine failed: {}", e)),
+                    }
+                    update_stats_display(hwnd);
+                }
+                508 => { // Toggle Timer Resolution
+                    let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+                    let target_mode = if cur_res <= 0.6 {
+                        crate::core::timer_res::TimerResolutionMode::Default
+                    } else {
+                        crate::core::timer_res::TimerResolutionMode::HalfMs
+                    };
+                    if let Ok(mut guard_lock) = G_TIMER_GUARD.lock() {
+                        if let Some(guard) = guard_lock.as_mut() {
+                            let _ = guard.set_mode(target_mode);
+                        }
+                    }
+                    let updated_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+                    set_text(hwnd, 103, &format!("Status: Timer resolution set to {:.3} ms.", updated_res));
+                    InvalidateRect(hwnd, std::ptr::null(), 0);
                 }
                 401 | 506 => { // Settings dialog
                     save_config_from_controls(hwnd);
@@ -781,6 +891,17 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         update_top_processes(hwnd);
                     }
                 }
+                701..=705 => {
+                    let index = (id - 701) as usize;
+                    let proc = TOP_PROCESSES.lock().ok()
+                        .and_then(|processes| processes.get(index).cloned());
+                    if let Some(p) = proc {
+                        match crate::core::process::set_process_eco_qos(p.pid, true) {
+                            Ok(()) => set_text(hwnd, 103, &format!("Status: Enabled EcoQoS on {} (PID {}).", p.name, p.pid)),
+                            Err(e) => set_text(hwnd, 103, &format!("Status: EcoQoS failed for {}: {}", p.name, e)),
+                        }
+                    }
+                }
                 _ => {}
             }
             0
@@ -808,8 +929,14 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 DrawIconEx(hdc, 22, 14, logo_icon, 20, 20, 0, std::ptr::null_mut(), DI_NORMAL);
             }
             let header1 = windows_sys::w!("MEMCLEAN — PHYSICAL RAM TELEMETRY");
-            let mut h1_rc = RECT { left: 47, top: 17, right: 362, bottom: 32 };
+            let mut h1_rc = RECT { left: 47, top: 17, right: 240, bottom: 32 };
             DrawTextW(hdc, header1, -1, &mut h1_rc, DT_SINGLELINE);
+
+            let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+            let timer_str = format!("Timer: {:.3} ms\0", cur_res);
+            let timer_wide: Vec<u16> = timer_str.encode_utf16().collect();
+            let mut timer_rc = RECT { left: 240, top: 17, right: 362, bottom: 32 };
+            DrawTextW(hdc, timer_wide.as_ptr(), -1, &mut timer_rc, DT_RIGHT | DT_SINGLELINE);
 
             // Progress bar track at (22, 36, 362, 42)
             let null_pen = GetStockObject(NULL_PEN as i32);
@@ -817,22 +944,47 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             SelectObject(hdc, G_TRACK_BRUSH);
             RoundRect(hdc, 22, 36, 362, 42, 4, 4);
 
-            // Progress bar fill
-            let pct = G_USED_PERCENT.min(100);
-            if pct > 0 {
-                let fill_color = if pct < 70 {
-                    0x00386534 // Pale Green / Forest Green #346538
-                } else if pct < 85 {
-                    0x00006495 // Pale Yellow / Amber #956400
-                } else {
-                    0x002D2F9F // Pale Red #9F2F2D
-                };
-                let bar_brush = CreateSolidBrush(fill_color);
-                SelectObject(hdc, bar_brush);
-                let track_w = 362 - 22;
-                let fill_w = ((track_w as u32 * pct) / 100) as i32;
-                RoundRect(hdc, 22, 36, 22 + fill_w.max(6), 42, 4, 4);
-                DeleteObject(bar_brush);
+            // Segmented progress bar fill
+            let ext_stats = G_EXT_STATS.lock().ok().and_then(|lock| *lock);
+            if let Some(ext) = ext_stats {
+                let (in_use_w, standby_w, mod_w, _rem_w) = calculate_memory_bar_segments(
+                    ext.total_phys_mb,
+                    ext.used_phys_mb,
+                    ext.standby_total_mb,
+                    ext.modified_mb,
+                    340,
+                );
+                let mut cur_x = 22;
+                if in_use_w > 0 {
+                    let b = CreateSolidBrush(0x00111111);
+                    SelectObject(hdc, b);
+                    RoundRect(hdc, cur_x, 36, (cur_x + in_use_w).min(362), 42, 4, 4);
+                    DeleteObject(b);
+                    cur_x += in_use_w;
+                }
+                if standby_w > 0 && cur_x < 362 {
+                    let b = CreateSolidBrush(0x00B59A7A); // Slate Blue
+                    SelectObject(hdc, b);
+                    RoundRect(hdc, cur_x, 36, (cur_x + standby_w).min(362), 42, 4, 4);
+                    DeleteObject(b);
+                    cur_x += standby_w;
+                }
+                if mod_w > 0 && cur_x < 362 {
+                    let b = CreateSolidBrush(0x000677D9); // Amber
+                    SelectObject(hdc, b);
+                    RoundRect(hdc, cur_x, 36, (cur_x + mod_w).min(362), 42, 4, 4);
+                    DeleteObject(b);
+                }
+            } else {
+                let pct = G_USED_PERCENT.min(100);
+                if pct > 0 {
+                    let bar_brush = CreateSolidBrush(0x00111111);
+                    SelectObject(hdc, bar_brush);
+                    let track_w = 362 - 22;
+                    let fill_w = ((track_w as u32 * pct) / 100) as i32;
+                    RoundRect(hdc, 22, 36, 22 + fill_w.max(6), 42, 4, 4);
+                    DeleteObject(bar_brush);
+                }
             }
 
             // Top consumers card
@@ -909,7 +1061,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 SetBkMode(dis.hDC, TRANSPARENT as i32);
                 SetTextColor(dis.hDC, 0x00FFFFFF);
                 let old_font = SelectObject(dis.hDC, G_FONT_BOLD);
-                let text = windows_sys::w!("Optimize Memory Now");
+                let text = windows_sys::w!("Optimize All");
                 let mut rc = dis.rcItem;
                 DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis.hDC, old_font);
@@ -936,7 +1088,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis.hDC, old_font);
                 1
-            } else if (401..=403).contains(&dis.CtlID) || (601..=605).contains(&dis.CtlID) {
+            } else if (401..=403).contains(&dis.CtlID) || (601..=605).contains(&dis.CtlID) || (701..=705).contains(&dis.CtlID) || dis.CtlID == 203 {
                 // Footer buttons: White background, hairline #EAEAEA border, off-black text
                 let is_selected = (dis.itemState & ODS_SELECTED) != 0;
                 let bg_color = if is_selected { 0x00EFEFEF } else { 0x00FFFFFF };
@@ -954,10 +1106,12 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 SetTextColor(dis.hDC, 0x00111111);
                 let old_font = SelectObject(dis.hDC, G_FONT_UI);
                 let text = match dis.CtlID {
+                    203 => windows_sys::w!("Combine Pages"),
                     401 => windows_sys::w!("Settings..."),
                     402 => windows_sys::w!("Minimize to Tray"),
                     403 => windows_sys::w!("Exit"),
                     601..=605 => windows_sys::w!("Trim"),
+                    701..=705 => windows_sys::w!("Eco"),
                     _ => windows_sys::w!(""),
                 };
                 let mut rc = dis.rcItem;
@@ -1034,6 +1188,8 @@ unsafe fn show_tray_menu(hwnd: HWND, x: i32, y: i32) {
     AppendMenuW(menu, MF_STRING, 502, windows_sys::w!("Quick Optimize"));
     AppendMenuW(menu, MF_STRING, 503, windows_sys::w!("Purge Standby List"));
     AppendMenuW(menu, MF_STRING, 504, windows_sys::w!("Empty Working Sets"));
+    AppendMenuW(menu, MF_STRING, 507, windows_sys::w!("Combine Duplicate Pages"));
+    AppendMenuW(menu, MF_STRING, 508, windows_sys::w!("Toggle 0.5ms Timer Resolution"));
     AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
     AppendMenuW(menu, MF_STRING, 506, windows_sys::w!("Settings..."));
     AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
@@ -1084,5 +1240,21 @@ mod tests {
             DestroyIcon(icon32);
             DestroyIcon(icon48);
         }
+    }
+
+    #[test]
+    fn test_calculate_memory_bar_segments() {
+        let (in_use, standby, mod_w, rem) = calculate_memory_bar_segments(16384, 8192, 4096, 1024, 340);
+        assert_eq!(in_use, 170); // 50%
+        assert_eq!(standby, 85);  // 25%
+        assert_eq!(mod_w, 21);   // 6.25%
+        assert!(rem > 0);
+        assert_eq!(in_use + standby + mod_w + rem, 340);
+    }
+
+    #[test]
+    fn test_format_tray_tooltip() {
+        let tip = format_tray_tooltip(57, 4096, 0.5);
+        assert_eq!(tip, "MemClean: 57% | Standby: 4096MB | Timer: 0.5ms");
     }
 }
