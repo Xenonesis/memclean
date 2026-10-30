@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
 use crate::core::memory;
 use crate::engine::cleaner;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
@@ -56,13 +56,29 @@ const WM_TRAYICON: u32 = WM_USER + 1;
 const TIMER_ID: usize = 1001;
 
 pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
+    let cfg = get_config();
+    create_percent_icon_with_config(percent, &cfg.tray)
+}
+
+pub fn create_percent_icon_with_config(
+    percent: u32,
+    tray_cfg: &crate::config::TrayConfig,
+) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
     unsafe {
+        if tray_cfg.style == TrayStyle::Logo {
+            let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
+            let app_icon = LoadIconW(hinstance, 1 as _);
+            if !app_icon.is_null() {
+                return app_icon;
+            }
+        }
+
         let hdc = CreateCompatibleDC(std::ptr::null_mut());
 
         let mut bmi: BITMAPINFO = std::mem::zeroed();
         bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
         bmi.bmiHeader.biWidth = 16;
-        bmi.bmiHeader.biHeight = 16;
+        bmi.bmiHeader.biHeight = -16; // Top-down DIB so row 0 is top
         bmi.bmiHeader.biPlanes = 1;
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
@@ -70,33 +86,37 @@ pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMe
         let mut bits: *mut std::ffi::c_void = std::ptr::null_mut();
         let hbm_color = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut bits, std::ptr::null_mut(), 0);
 
-        // 1-bit monochrome mask (16x16 bits = 16 rows of 2 bytes = 32 bytes of 0 -> 0 is opaque)
-        let mask_bytes = [0u8; 32];
-        let hbm_mask = CreateBitmap(16, 16, 1, 1, mask_bytes.as_ptr() as _);
-
         let old_bm = SelectObject(hdc, hbm_color);
 
-        // Utilitarian badge background color (BGR format):
-        let bg_color = if percent < 70 {
-            0x00346516 // Forest Green (#166534 -> BGR: 0x34, 0x65, 0x16)
-        } else if percent < 85 {
-            0x000E4D85 // Deep Amber (#854D0E -> BGR: 0x0E, 0x4D, 0x85)
-        } else {
-            0x001B1B99 // Carmine Red (#991B1B -> BGR: 0x1B, 0x1B, 0x99)
+        // Text color in BGR format
+        let text_color = match tray_cfg.color_mode {
+            TrayColorMode::Monochrome => 0x00FFFFFF, // Crisp White
+            TrayColorMode::Dynamic => {
+                if percent < 70 {
+                    0x005EC522 // Mint/Forest Green #22C55E (BGR: 0x5E, 0xC5, 0x22)
+                } else if percent < 85 {
+                    0x000B9EF5 // Warm Amber #F59E0B (BGR: 0x0B, 0x9E, 0xF5)
+                } else {
+                    0x004444EF // Carmine Coral #EF4444 (BGR: 0x44, 0x44, 0xEF)
+                }
+            }
         };
 
-        let brush = CreateSolidBrush(bg_color);
-        let mut rect = RECT {
-            left: 0,
-            top: 0,
-            right: 16,
-            bottom: 16,
-        };
-        FillRect(hdc, &rect, brush);
-        DeleteObject(brush);
+        if tray_cfg.style == TrayStyle::Capsule {
+            // Draw a rounded capsule container
+            let capsule_brush = CreateSolidBrush(0x00241E18); // Dark Slate #181E24
+            let capsule_pen = CreatePen(PS_SOLID as i32, 1, 0x0041342A); // Border #2A3441
+            let old_brush = SelectObject(hdc, capsule_brush);
+            let old_pen = SelectObject(hdc, capsule_pen);
+            RoundRect(hdc, 0, 1, 16, 15, 6, 6);
+            SelectObject(hdc, old_brush);
+            SelectObject(hdc, old_pen);
+            DeleteObject(capsule_brush);
+            DeleteObject(capsule_pen);
+        }
 
         SetBkMode(hdc, TRANSPARENT as i32);
-        SetTextColor(hdc, 0x00FFFFFF); // Pure white text
+        SetTextColor(hdc, text_color);
 
         let font = CreateFontW(
             -11, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 1, 0, 0, 5, 0,
@@ -104,12 +124,38 @@ pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMe
         );
         let old_font = SelectObject(hdc, font);
 
+        let mut rect = RECT {
+            left: 0,
+            top: 0,
+            right: 16,
+            bottom: 16,
+        };
         let text = format!("{:02}", percent.min(99));
         let wide: Vec<u16> = text.encode_utf16().collect();
         DrawTextW(hdc, wide.as_ptr(), wide.len() as i32, &mut rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
         SelectObject(hdc, old_font);
         DeleteObject(font);
+
+        // Build 1-bit transparency mask (1 = transparent, 0 = opaque)
+        let mut mask_bytes = [0xFFu8; 32];
+        if !bits.is_null() {
+            let pixels = std::slice::from_raw_parts_mut(bits as *mut u32, 256);
+            for y in 0..16 {
+                for x in 0..16 {
+                    let idx = y * 16 + x;
+                    if (pixels[idx] & 0x00FFFFFF) != 0 {
+                        let byte_idx = y * 2 + (x / 8);
+                        let bit_idx = 7 - (x % 8);
+                        mask_bytes[byte_idx] &= !(1 << bit_idx);
+                        pixels[idx] |= 0xFF000000; // Alpha 255
+                    }
+                }
+            }
+        }
+
+        let hbm_mask = CreateBitmap(16, 16, 1, 1, mask_bytes.as_ptr() as _);
+
         SelectObject(hdc, old_bm);
         DeleteDC(hdc);
 
@@ -363,7 +409,7 @@ pub fn run_application(start_minimized: bool) {
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Auto-optimize when RAM exceeds 80%"), BS_AUTOCHECKBOX as u32, 22, 330, 340, 20, 307, G_FONT_UI);
 
         // Footer action buttons (Flat Minimalist Owner-Drawn)
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Save Settings"), BS_OWNERDRAW as u32, 12, 374, 114, 30, 401, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Settings..."), BS_OWNERDRAW as u32, 12, 374, 114, 30, 401, G_FONT_UI);
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Minimize to Tray"), BS_OWNERDRAW as u32, 132, 374, 126, 30, 402, G_FONT_UI);
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Exit"), BS_OWNERDRAW as u32, 264, 374, 108, 30, 403, G_FONT_UI);
         load_config_to_controls(hwnd);
@@ -435,11 +481,21 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 ShowWindow(hwnd, SW_RESTORE);
                 SetForegroundWindow(hwnd);
             } else if event == WM_LBUTTONUP {
-                if IsWindowVisible(hwnd) != 0 {
-                    ShowWindow(hwnd, SW_HIDE);
+                let cfg = get_config();
+                if cfg.tray.click_action == TrayClickAction::QuickOptimize {
+                    let before = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
+                    let _ = cleaner::perform_clean(&cfg, false);
+                    let after = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
+                    let freed = if after > before { after - before } else { 0 };
+                    show_tray_notification(hwnd, "MemClean Optimization", &format!("Freed {} MB physical RAM.", freed));
+                    update_stats_display(hwnd);
                 } else {
-                    ShowWindow(hwnd, SW_RESTORE);
-                    SetForegroundWindow(hwnd);
+                    if IsWindowVisible(hwnd) != 0 {
+                        ShowWindow(hwnd, SW_HIDE);
+                    } else {
+                        ShowWindow(hwnd, SW_RESTORE);
+                        SetForegroundWindow(hwnd);
+                    }
                 }
             }
             0
@@ -527,8 +583,15 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     set_text(hwnd, 103, "Status: Standby list purged.");
                     update_stats_display(hwnd);
                 }
-                401 => { // Save Settings
+                401 | 506 => { // Settings dialog
                     save_config_from_controls(hwnd);
+                    crate::ui::dialog::show_settings_dialog(hwnd);
+                    {
+                        let mut lock = CACHED_CONFIG.lock().unwrap();
+                        *lock = Some(AppConfig::load());
+                    }
+                    load_config_to_controls(hwnd);
+                    update_stats_display(hwnd);
                 }
                 402 => { // Minimize to Tray
                     ShowWindow(hwnd, SW_HIDE);
@@ -704,7 +767,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 SetTextColor(dis.hDC, 0x00111111);
                 let old_font = SelectObject(dis.hDC, G_FONT_UI);
                 let text = match dis.CtlID {
-                    401 => windows_sys::w!("Save Settings"),
+                    401 => windows_sys::w!("Settings..."),
                     402 => windows_sys::w!("Minimize to Tray"),
                     403 => windows_sys::w!("Exit"),
                     _ => windows_sys::w!(""),
@@ -783,6 +846,8 @@ unsafe fn show_tray_menu(hwnd: HWND, x: i32, y: i32) {
     AppendMenuW(menu, MF_STRING, 503, windows_sys::w!("Purge Standby List"));
     AppendMenuW(menu, MF_STRING, 504, windows_sys::w!("Empty Working Sets"));
     AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
+    AppendMenuW(menu, MF_STRING, 506, windows_sys::w!("Settings..."));
+    AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
     AppendMenuW(menu, MF_STRING, 505, windows_sys::w!("Exit"));
 
     TrackPopupMenu(menu, TPM_RIGHTALIGN | TPM_BOTTOMALIGN, x, y, 0, hwnd, std::ptr::null());
@@ -795,7 +860,25 @@ mod tests {
 
     #[test]
     fn test_create_icon_not_null() {
-        let icon = create_percent_icon(42);
+        use crate::config::TrayConfig;
+        let cfg = TrayConfig::default();
+        let icon = create_percent_icon_with_config(42, &cfg);
         assert!(!icon.is_null());
+
+        let capsule_cfg = TrayConfig {
+            style: TrayStyle::Capsule,
+            color_mode: TrayColorMode::Dynamic,
+            click_action: TrayClickAction::OpenDashboard,
+        };
+        let icon_capsule = create_percent_icon_with_config(88, &capsule_cfg);
+        assert!(!icon_capsule.is_null());
+
+        let mono_cfg = TrayConfig {
+            style: TrayStyle::Floating,
+            color_mode: TrayColorMode::Monochrome,
+            click_action: TrayClickAction::OpenDashboard,
+        };
+        let icon_mono = create_percent_icon_with_config(72, &mono_cfg);
+        assert!(!icon_mono.is_null());
     }
 }

@@ -1,4 +1,4 @@
-use crate::config::AppConfig;
+use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     BeginPaint, EndPaint, PAINTSTRUCT,
@@ -6,9 +6,9 @@ use windows_sys::Win32::Graphics::Gdi::{
     RoundRect, SelectObject, SetBkMode, SetTextColor, PS_SOLID, TRANSPARENT, DT_CENTER, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetMessageW,
-    IsDialogMessageW, LoadIconW, MessageBoxW, RegisterClassW, SendMessageW, ShowWindow,
-    BS_AUTOCHECKBOX, BS_OWNERDRAW, MB_ICONINFORMATION, MB_OK, MSG, SW_SHOW,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetDlgItem, GetMessageW,
+    IsDialogMessageW, LoadIconW, RegisterClassW, SendMessageW, ShowWindow,
+    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_AUTORADIOBUTTON, BS_OWNERDRAW, MSG, SW_SHOW,
     WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
     WM_DRAWITEM, WM_ERASEBKGND, WM_PAINT, WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
@@ -34,6 +34,26 @@ static mut D_BORDER_PEN: windows_sys::Win32::Graphics::Gdi::HPEN = std::ptr::nul
 static mut D_FONT_UI: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut D_FONT_BOLD: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut D_FONT_SUBHEADER: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
+
+const BST_CHECKED: usize = 1;
+const BST_UNCHECKED: usize = 0;
+
+unsafe fn set_checked(hwnd: HWND, id: i32, checked: bool) {
+    let ctrl = GetDlgItem(hwnd, id);
+    if !ctrl.is_null() {
+        let state = if checked { BST_CHECKED } else { BST_UNCHECKED };
+        SendMessageW(ctrl, BM_SETCHECK, state as WPARAM, 0);
+    }
+}
+
+unsafe fn is_checked(hwnd: HWND, id: i32) -> bool {
+    let ctrl = GetDlgItem(hwnd, id);
+    if !ctrl.is_null() {
+        SendMessageW(ctrl, BM_GETCHECK, 0, 0) == BST_CHECKED as LRESULT
+    } else {
+        false
+    }
+}
 
 pub fn show_settings_dialog(_parent: HWND) {
     unsafe {
@@ -72,12 +92,19 @@ pub fn show_settings_dialog(_parent: HWND) {
         };
         RegisterClassW(&wc);
 
+        let width = 380;
+        let height = 460;
+        let screen_w = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CXSCREEN);
+        let screen_h = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CYSCREEN);
+        let x = (screen_w - width) / 2;
+        let y = (screen_h - height) / 2;
+
         let hwnd = CreateWindowExW(
             0,
             class_name,
             windows_sys::w!("MemClean Settings"),
             WS_OVERLAPPEDWINDOW & !(0x00010000 | 0x00040000), // Disable maximize & resize
-            200, 200, 396, 370,
+            x, y, width, height,
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             std::ptr::null_mut(),
@@ -88,11 +115,11 @@ pub fn show_settings_dialog(_parent: HWND) {
             SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
         }
 
-        let create_chk = |text: *const u16, cy: i32, id: i32| -> HWND {
+        let create_radio = |text: *const u16, cy: i32, id: i32| -> HWND {
             let ctrl = CreateWindowExW(
                 0, windows_sys::w!("BUTTON"), text,
-                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
-                28, cy, 324, 22, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut(),
+                WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON as u32,
+                24, cy, 316, 20, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut(),
             );
             if !ctrl.is_null() && !D_FONT_UI.is_null() {
                 SendMessageW(ctrl, WM_SETFONT, D_FONT_UI as WPARAM, 1);
@@ -100,19 +127,54 @@ pub fn show_settings_dialog(_parent: HWND) {
             ctrl
         };
 
-        // Checkboxes for features (inside card, seamless background)
-        create_chk(windows_sys::w!("Purge Standby Page List"), 58, 201);
-        create_chk(windows_sys::w!("Low-Priority Standby Purge"), 86, 202);
-        create_chk(windows_sys::w!("Flush Modified Page List"), 114, 203);
-        create_chk(windows_sys::w!("Trim System File Cache"), 142, 204);
-        create_chk(windows_sys::w!("Trim Background Working Sets"), 170, 205);
-        create_chk(windows_sys::w!("Enable Game && Foreground Shield"), 198, 206);
+        let create_chk = |text: *const u16, cy: i32, id: i32| -> HWND {
+            let ctrl = CreateWindowExW(
+                0, windows_sys::w!("BUTTON"), text,
+                WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX as u32,
+                24, cy, 316, 20, hwnd, id as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            );
+            if !ctrl.is_null() && !D_FONT_UI.is_null() {
+                SendMessageW(ctrl, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+            }
+            ctrl
+        };
 
-        // Flat Minimalist Save & Close button (BS_OWNERDRAW)
+        // Card 1: Tray Icon Style
+        create_radio(windows_sys::w!("Floating Transparent Number (Minimalist)"), 40, 101);
+        create_radio(windows_sys::w!("Rounded Capsule Badge (Dark Matte)"), 64, 102);
+        create_radio(windows_sys::w!("Monogram Logo Icon (Concept B)"), 88, 103);
+
+        // Card 1: Color Mode
+        create_radio(windows_sys::w!("Dynamic Color (Green / Amber / Red)"), 132, 104);
+        create_radio(windows_sys::w!("Monochrome White (Distraction-Free)"), 156, 105);
+
+        // Card 2: Tray Behavior & Startup
+        create_radio(windows_sys::w!("Click Opens / Restores Dashboard"), 228, 201);
+        create_radio(windows_sys::w!("Click Optimizes Memory Instantly"), 252, 202);
+        create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 294, 203);
+
+        // Load current config into controls
+        let cfg = AppConfig::load();
+        match cfg.tray.style {
+            TrayStyle::Floating => set_checked(hwnd, 101, true),
+            TrayStyle::Capsule => set_checked(hwnd, 102, true),
+            TrayStyle::Logo => set_checked(hwnd, 103, true),
+        }
+        match cfg.tray.color_mode {
+            TrayColorMode::Dynamic => set_checked(hwnd, 104, true),
+            TrayColorMode::Monochrome => set_checked(hwnd, 105, true),
+        }
+        match cfg.tray.click_action {
+            TrayClickAction::OpenDashboard => set_checked(hwnd, 201, true),
+            TrayClickAction::QuickOptimize => set_checked(hwnd, 202, true),
+        }
+        set_checked(hwnd, 203, cfg.general.start_minimized);
+
+        // Flat Minimalist Apply & Close button (BS_OWNERDRAW)
         let btn = CreateWindowExW(
-            0, windows_sys::w!("BUTTON"), windows_sys::w!("Save and Close"),
+            0, windows_sys::w!("BUTTON"), windows_sys::w!("Apply and Close"),
             WS_CHILD | WS_VISIBLE | BS_OWNERDRAW as u32,
-            16, 276, 348, 38, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            12, 385, 340, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !btn.is_null() && !D_FONT_BOLD.is_null() {
             SendMessageW(btn, WM_SETFONT, D_FONT_BOLD as WPARAM, 1);
@@ -140,22 +202,41 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             GetClientRect(hwnd, &mut client_rc);
             FillRect(hdc, &client_rc, D_BG_BRUSH);
 
-            // Options Card
+            // Card 1: Tray Appearance (12, 10, 352, 192)
             let old_brush = SelectObject(hdc, D_CARD_BRUSH);
             let old_pen = SelectObject(hdc, D_BORDER_PEN);
-            RoundRect(hdc, 16, 16, 364, 260, 12, 12);
+            RoundRect(hdc, 12, 10, 352, 192, 10, 10);
 
-            // Card Header
+            // Card 1 Header: TRAY APPEARANCE
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, 0x00747778); // Muted gray #787774
             let old_font = SelectObject(hdc, D_FONT_SUBHEADER);
-            let header = windows_sys::w!("OPTIMIZATION POLICIES");
-            let mut h_rc = RECT { left: 28, top: 26, right: 350, bottom: 42 };
-            DrawTextW(hdc, header, -1, &mut h_rc, DT_SINGLELINE);
+            let header1 = windows_sys::w!("TRAY ICON STYLE");
+            let mut h1_rc = RECT { left: 24, top: 18, right: 340, bottom: 32 };
+            DrawTextW(hdc, header1, -1, &mut h1_rc, DT_SINGLELINE);
 
-            // Hairline divider
-            MoveToEx(hdc, 28, 46, std::ptr::null_mut());
-            LineTo(hdc, 352, 46);
+            // Sub-divider for color mode
+            MoveToEx(hdc, 24, 116, std::ptr::null_mut());
+            LineTo(hdc, 340, 116);
+
+            let header_color = windows_sys::w!("COLOR MODE");
+            let mut hc_rc = RECT { left: 24, top: 120, right: 340, bottom: 132 };
+            DrawTextW(hdc, header_color, -1, &mut hc_rc, DT_SINGLELINE);
+
+            // Card 2: Tray Behavior & Startup (12, 202, 352, 372)
+            SelectObject(hdc, D_CARD_BRUSH);
+            SelectObject(hdc, D_BORDER_PEN);
+            RoundRect(hdc, 12, 202, 352, 372, 10, 10);
+
+            // Card 2 Header: TRAY INTERACTION & STARTUP
+            SetTextColor(hdc, 0x00747778);
+            let header2 = windows_sys::w!("TRAY INTERACTION && STARTUP");
+            let mut h2_rc = RECT { left: 24, top: 210, right: 340, bottom: 224 };
+            DrawTextW(hdc, header2, -1, &mut h2_rc, DT_SINGLELINE);
+
+            // Sub-divider
+            MoveToEx(hdc, 24, 280, std::ptr::null_mut());
+            LineTo(hdc, 340, 280);
 
             SelectObject(hdc, old_brush);
             SelectObject(hdc, old_pen);
@@ -167,7 +248,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, 0x00111111);
-            D_CARD_BRUSH as LRESULT // Checkbox background matches white card
+            D_CARD_BRUSH as LRESULT // Controls match white card surface
         }
         WM_CTLCOLORBTN => {
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
@@ -196,7 +277,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 SetBkMode(dis.hDC, TRANSPARENT as i32);
                 SetTextColor(dis.hDC, 0x00FFFFFF);
                 let old_font = SelectObject(dis.hDC, D_FONT_BOLD);
-                let text = windows_sys::w!("Save and Close");
+                let text = windows_sys::w!("Apply and Close");
                 let mut rc = dis.rcItem;
                 DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis.hDC, old_font);
@@ -208,14 +289,30 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
         WM_COMMAND => {
             let id = (wparam & 0xFFFF) as u32;
             if id == 301 {
-                let config = AppConfig::load();
-                let _ = config.save();
-                MessageBoxW(
-                    hwnd,
-                    windows_sys::w!("Settings saved successfully."),
-                    windows_sys::w!("MemClean"),
-                    MB_OK | MB_ICONINFORMATION,
-                );
+                let mut cfg = AppConfig::load();
+                if is_checked(hwnd, 101) {
+                    cfg.tray.style = TrayStyle::Floating;
+                } else if is_checked(hwnd, 102) {
+                    cfg.tray.style = TrayStyle::Capsule;
+                } else if is_checked(hwnd, 103) {
+                    cfg.tray.style = TrayStyle::Logo;
+                }
+
+                if is_checked(hwnd, 104) {
+                    cfg.tray.color_mode = TrayColorMode::Dynamic;
+                } else if is_checked(hwnd, 105) {
+                    cfg.tray.color_mode = TrayColorMode::Monochrome;
+                }
+
+                if is_checked(hwnd, 201) {
+                    cfg.tray.click_action = TrayClickAction::OpenDashboard;
+                } else if is_checked(hwnd, 202) {
+                    cfg.tray.click_action = TrayClickAction::QuickOptimize;
+                }
+
+                cfg.general.start_minimized = is_checked(hwnd, 203);
+
+                let _ = cfg.save();
                 DestroyWindow(hwnd);
             }
             0

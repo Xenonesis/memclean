@@ -9,6 +9,42 @@ pub enum Preset {
     Custom,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum TrayStyle {
+    Floating,
+    Capsule,
+    Logo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum TrayColorMode {
+    Dynamic,
+    Monochrome,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum TrayClickAction {
+    OpenDashboard,
+    QuickOptimize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TrayConfig {
+    pub style: TrayStyle,
+    pub color_mode: TrayColorMode,
+    pub click_action: TrayClickAction,
+}
+
+impl Default for TrayConfig {
+    fn default() -> Self {
+        Self {
+            style: TrayStyle::Floating,
+            color_mode: TrayColorMode::Dynamic,
+            click_action: TrayClickAction::OpenDashboard,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GeneralConfig {
     pub run_on_startup: bool,
@@ -40,6 +76,8 @@ pub struct AppConfig {
     pub general: GeneralConfig,
     pub policy: PolicyConfig,
     pub triggers: TriggersConfig,
+    #[serde(default)]
+    pub tray: TrayConfig,
     pub exclusions: Vec<String>,
 }
 
@@ -66,6 +104,7 @@ impl Default for AppConfig {
                 auto_timer_enabled: true,
                 timer_minutes: 15,
             },
+            tray: TrayConfig::default(),
             exclusions: vec![
                 "explorer.exe".to_string(),
                 "steam.exe".to_string(),
