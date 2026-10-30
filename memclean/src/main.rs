@@ -342,6 +342,11 @@ fn main() {
             print_line(&format!("Trimmed working sets for {} processes.", count));
             return;
         }
+        if args.iter().any(|a| a == "--settings") {
+            #[cfg(windows)]
+            memclean::ui::dialog::show_settings_dialog(0 as _);
+            return;
+        }
 
         let timer_res_pos = args.iter().position(|a| a == "--timer-res");
         let timer_res_eq = args.iter().find(|a| a.starts_with("--timer-res="));
