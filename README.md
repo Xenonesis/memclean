@@ -206,6 +206,9 @@ MemClean is a dual-mode binary. When invoked with command-line arguments, it aut
 | `memclean.exe --combine` | Runs kernel physical page combining (RAM de-duplication) via NT class 130. | Memory reclaim across multiple Electron/browser apps. |
 | `memclean.exe --working-sets` | Trims working sets of all non-protected processes. | Process memory compaction. |
 | `memclean.exe --timer-res <0.5\|1.0>` | Requests and locks global scheduler timer resolution in milliseconds. | Low-latency gaming and audio production. |
+| `memclean.exe --network-status` | Prints current Windows TCP stack, network throttling, and interface latency state. | Competitive gaming diagnostic. |
+| `memclean.exe --network-optimize` | Applies competitive low-latency TCP stack (`TCPNoDelay`, instant ACKs, no throttling). | Competitive multiplayer optimization. |
+| `memclean.exe --network-restore` | Restores original Windows default network throttling and TCP settings from atomic backup. | Safe 1-click network rollback. |
 | `memclean.exe --silent` / `-s` | Suppresses console stdout (exit code 0 on success). | Silent batch scripts and Task Scheduler runs. |
 | `memclean.exe --autostart` | Registers elevated auto-start in Windows Task Scheduler (`schtasks`). | Post-install automated configuration. |
 | `memclean.exe --no-autostart`| Removes elevated auto-start task from Task Scheduler. | Deconfiguration / uninstallation. |

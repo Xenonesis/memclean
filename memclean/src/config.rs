@@ -198,6 +198,12 @@ impl Default for UpdatesConfig {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+pub struct NetworkConfig {
+    #[serde(default)]
+    pub low_latency_enabled: bool,
+}
+
 
 impl Default for TriggersConfig {
     fn default() -> Self {
@@ -298,6 +304,8 @@ pub struct AppConfig {
     pub exclusions: Vec<String>,
     #[serde(default)]
     pub updates: UpdatesConfig,
+    #[serde(default)]
+    pub network: NetworkConfig,
 }
 
 impl Default for AppConfig {
@@ -310,6 +318,7 @@ impl Default for AppConfig {
             tray: TrayConfig::default(),
             exclusions: default_exclusions(),
             updates: UpdatesConfig::default(),
+            network: NetworkConfig::default(),
         }
     }
 }
@@ -448,5 +457,26 @@ run_on_startup = true
         let restored_legacy: AppConfig = toml::from_str(legacy).unwrap();
         assert!(restored_legacy.updates.check_on_startup);
         assert_eq!(restored_legacy.updates.last_check_timestamp, 0);
+    }
+
+
+    #[test]
+    fn test_network_config_defaults_and_roundtrip() {
+        let mut config = AppConfig::default();
+        assert!(!config.network.low_latency_enabled);
+
+        config.network.low_latency_enabled = true;
+        let serialized = toml::to_string(&config).unwrap();
+        let restored: AppConfig = toml::from_str(&serialized).unwrap();
+        assert!(restored.network.low_latency_enabled);
+
+        // Legacy config missing [network] table
+        let legacy = r#"
+exclusions = ["explorer.exe"]
+[general]
+run_on_startup = true
+"#;
+        let restored_legacy: AppConfig = toml::from_str(legacy).unwrap();
+        assert!(!restored_legacy.network.low_latency_enabled);
     }
 }

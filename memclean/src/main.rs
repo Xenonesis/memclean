@@ -196,6 +196,9 @@ fn print_help() {
     print_line("      --timer-res <TARGET>  Set timer resolution: 0.5, 1.0, or default (ms)");
     print_line("      --stats, --status     Print current memory and system statistics");
     print_line("      --json                Output statistics in machine-readable JSON format");
+    print_line("      --network-status      Print current Windows TCP and multimedia network throttling state");
+    print_line("      --network-optimize    Apply competitive low-latency TCP stack (TCPNoDelay, instant ACKs)");
+    print_line("      --network-restore     Restore Windows default network throttling and TCP stack settings");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -345,6 +348,71 @@ fn main() {
         if args.iter().any(|a| a == "--settings") {
             #[cfg(windows)]
             memclean::ui::dialog::show_settings_dialog(0 as _);
+            return;
+        }
+
+        if args.iter().any(|a| a == "--network-status") {
+            let status = memclean::core::network::get_network_status();
+            print_line("=== MemClean Competitive Network Latency Status ===");
+            print_line(&format!(
+                "Network Throttling Index: {:?} (Disabled: {})",
+                status.network_throttling_index, status.is_throttling_disabled
+            ));
+            print_line(&format!(
+                "System Responsiveness   : {:?} (Gaming 100%: {})",
+                status.system_responsiveness, status.is_responsiveness_maximized
+            ));
+            print_line(&format!(
+                "Active Interfaces       : {} detected (Optimized: {}/{})",
+                status.active_interfaces_count, status.optimized_interfaces_count, status.interfaces.len()
+            ));
+            print_line(&format!("Rollback Backup Exists  : {}", status.backup_exists));
+            for iface in &status.interfaces {
+                if let Some(ip) = &iface.ip_address {
+                    if ip != "0.0.0.0" && !ip.is_empty() {
+                        print_line(&format!(
+                            "  - [{}] IP: {} | TcpAckFrequency: {:?} | TCPNoDelay: {:?} | Optimized: {}",
+                            &iface.guid[..8.min(iface.guid.len())],
+                            ip,
+                            iface.tcp_ack_frequency,
+                            iface.tcp_no_delay,
+                            iface.is_optimized
+                        ));
+                    }
+                }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--network-optimize") {
+            match memclean::core::network::optimize_network() {
+                Ok(rep) => {
+                    print_line("Network optimization applied successfully:");
+                    print_line(&format!("  - Network Throttling Disabled : {}", rep.throttling_updated));
+                    print_line(&format!("  - System Responsiveness (100%): {}", rep.responsiveness_updated));
+                    print_line(&format!("  - Interfaces Optimized        : {}", rep.interfaces_updated));
+                    print_line(&format!("  - Rollback Backup Saved       : {}", rep.backup_saved));
+                }
+                Err(e) => {
+                    print_line(&format!("Error applying network optimization: {}", e));
+                }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--network-restore") {
+            match memclean::core::network::restore_network_defaults() {
+                Ok(rep) => {
+                    print_line("Network settings restored to defaults:");
+                    print_line(&format!("  - Throttling Restored  : {}", rep.throttling_restored));
+                    print_line(&format!("  - Responsiveness (20%) : {}", rep.responsiveness_restored));
+                    print_line(&format!("  - Interfaces Restored  : {}", rep.interfaces_restored));
+                    print_line(&format!("  - Used Rollback Backup : {}", rep.used_backup));
+                }
+                Err(e) => {
+                    print_line(&format!("Error restoring network settings: {}", e));
+                }
+            }
             return;
         }
 

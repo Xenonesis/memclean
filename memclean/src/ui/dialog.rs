@@ -45,7 +45,7 @@ const TAB_1_CTRLS: &[i32] = &[
     205, 206, 207, 208, 209, 210, 211, 212, 213,
     220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233,
 ];
-const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 251, 250, 252];
+const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 251, 250, 252, 260, 261, 262];
 
 const BST_CHECKED: usize = 1;
 const BST_UNCHECKED: usize = 0;
@@ -410,17 +410,38 @@ pub fn show_settings_dialog(_parent: HWND) {
             SendMessageW(lbl_res_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
         }
 
-        // Card 2: Kernel Page Combining
-        create_chk(windows_sys::w!("Enable Kernel Physical Page Combining on Clean"), 30, 272, 420, 250);
+        // Card 2: Kernel Page Combining & Network Latency
+        create_chk(windows_sys::w!("Enable Kernel Page Combining on Clean"), 30, 266, 420, 250);
 
         let lbl_page_desc = CreateWindowExW(
             0, windows_sys::w!("STATIC"),
-            windows_sys::w!("Invokes NtSetSystemInformation (Class 130) to scan physical RAM for duplicate pages (common across Electron apps like Chrome, VS Code, Discord) and de-duplicates them into Copy-on-Write pages without disk I/O."),
+            windows_sys::w!("De-duplicates identical physical RAM pages into Copy-on-Write pages."),
             WS_CHILD | WS_VISIBLE,
-            30, 304, 420, 64, hwnd, 252 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            30, 288, 420, 18, hwnd, 252 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !lbl_page_desc.is_null() && !D_FONT_DESC.is_null() {
             SendMessageW(lbl_page_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
+        }
+
+        create_chk(windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"), 30, 334, 420, 260);
+
+        let lbl_net_desc = CreateWindowExW(
+            0, windows_sys::w!("STATIC"),
+            windows_sys::w!("Disables Nagle's delayed ACKs and allocates 100% network CPU to games."),
+            WS_CHILD | WS_VISIBLE,
+            30, 356, 420, 18, hwnd, 262 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_net_desc.is_null() && !D_FONT_DESC.is_null() {
+            SendMessageW(lbl_net_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
+        }
+
+        let btn_net_restore = CreateWindowExW(
+            0, windows_sys::w!("BUTTON"), windows_sys::w!("Restore Network Defaults"),
+            WS_CHILD | WS_VISIBLE,
+            30, 380, 175, 22, hwnd, 261 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !btn_net_restore.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(btn_net_restore, WM_SETFONT, D_FONT_UI as WPARAM, 1);
         }
 
         // Load current config into controls
@@ -441,6 +462,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         set_checked(hwnd, 203, cfg.general.start_minimized);
         set_checked(hwnd, 204, cfg.general.global_hotkey_enabled);
         set_checked(hwnd, 214, cfg.updates.check_on_startup);
+        set_checked(hwnd, 260, cfg.network.low_latency_enabled);
 
         let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
         let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
@@ -568,10 +590,16 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                     let mut hres_rc = RECT { left: 30, top: 64, right: 454, bottom: 78 };
                     DrawTextW(hdc, windows_sys::w!("SCHEDULER TIMER RESOLUTION (SUB-MILLISECOND PRECISION)"), -1, &mut hres_rc, DT_SINGLELINE);
 
-                    // Card 2: Memory De-duplication (16, 238, 468, 404)
-                    RoundRect(hdc, 16, 238, 468, 404, 8, 8);
+                    // Card 2: Memory De-duplication & Network (16, 238, 468, 412)
+                    RoundRect(hdc, 16, 238, 468, 412, 8, 8);
                     let mut hpage_rc = RECT { left: 30, top: 248, right: 454, bottom: 262 };
                     DrawTextW(hdc, windows_sys::w!("MEMORY DE-DUPLICATION (NT KERNEL)"), -1, &mut hpage_rc, DT_SINGLELINE);
+
+                    MoveToEx(hdc, 30, 312, std::ptr::null_mut());
+                    LineTo(hdc, 454, 312);
+
+                    let mut hnet_rc = RECT { left: 30, top: 318, right: 454, bottom: 332 };
+                    DrawTextW(hdc, windows_sys::w!("COMPETITIVE NETWORK STACK (LOW PING)"), -1, &mut hnet_rc, DT_SINGLELINE);
                 }
             }
 
@@ -585,7 +613,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             let ctrl_id = GetDlgCtrlID(lparam as HWND);
-            if ctrl_id == 208 || ctrl_id == 213 || ctrl_id == 233 || ctrl_id == 251 || ctrl_id == 252 {
+            if ctrl_id == 208 || ctrl_id == 213 || ctrl_id == 233 || ctrl_id == 251 || ctrl_id == 252 || ctrl_id == 262 {
                 SetTextColor(hdc, 0x00747778); // Muted helper text
             } else {
                 SetTextColor(hdc, 0x00111111);
@@ -671,6 +699,35 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 return 0;
             }
 
+            if id == 261 {
+                match crate::core::network::restore_network_defaults() {
+                    Ok(_) => {
+                        set_checked(hwnd, 260, false);
+                        let mut cfg = AppConfig::load();
+                        cfg.network.low_latency_enabled = false;
+                        let _ = cfg.save();
+                        windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
+                            hwnd,
+                            windows_sys::w!("Network defaults successfully restored (throttling reset to 10, responsiveness to 20)."),
+                            windows_sys::w!("MemClean Network"),
+                            0x00000040, // MB_OK | MB_ICONINFORMATION
+                        );
+                    }
+                    Err(e) => {
+                        let err_wide: Vec<u16> = format!("Failed to restore network defaults:\n{}\n\n(Administrator privileges may be required)", e)
+                            .encode_utf16()
+                            .chain(std::iter::once(0))
+                            .collect();
+                        windows_sys::Win32::UI::WindowsAndMessaging::MessageBoxW(
+                            hwnd,
+                            err_wide.as_ptr(),
+                            windows_sys::w!("MemClean Network Error"),
+                            0x00000030, // MB_OK | MB_ICONWARNING
+                        );
+                    }
+                }
+                return 0;
+            }
             if id == 301 {
                 let mut cfg = AppConfig::load();
                 if is_checked(hwnd, 101) {
@@ -746,6 +803,15 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 }
 
                 cfg.tuning.combine_pages_on_clean = is_checked(hwnd, 250);
+                let net_opt_checked = is_checked(hwnd, 260);
+                if net_opt_checked != cfg.network.low_latency_enabled {
+                    cfg.network.low_latency_enabled = net_opt_checked;
+                    if net_opt_checked {
+                        let _ = crate::core::network::optimize_network();
+                    } else {
+                        let _ = crate::core::network::restore_network_defaults();
+                    }
+                }
                 let _ = cfg.save();
                 DestroyWindow(hwnd);
             }
@@ -816,7 +882,7 @@ mod tests {
             101, 102, 103, 104, 105, 201, 202, 203, 204, 214, // Tab 0
             205, 206, 207, 208, 209, 210, 211, 212, 213, // Tab 1 threshold & timer
             220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233, // Tab 1 islc & idle
-            240, 241, 242, 250, 251, 252, // Tab 2 kernel & page combining
+            240, 241, 242, 250, 251, 252, 260, 261, 262, // Tab 2 kernel, de-dup & network
         ];
         for &id in &expected {
             let in_0 = TAB_0_CTRLS.contains(&id);
