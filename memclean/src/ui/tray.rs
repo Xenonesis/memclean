@@ -11,18 +11,18 @@ use windows_sys::Win32::Graphics::Gdi::{
     NULL_PEN, PS_SOLID, TRANSPARENT, DT_CENTER, DT_RIGHT, DT_SINGLELINE, DT_VCENTER,
 };
 use windows_sys::Win32::UI::Shell::{
-    Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
+    ShellExecuteW, Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
     NIM_ADD, NIM_DELETE, NIM_MODIFY,
 };
 use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateIconFromResourceEx, CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
     DispatchMessageW, DrawIconEx, FindWindowW, GetClientRect, GetCursorPos, GetDlgItem, GetMessageW,
-    IsWindowVisible, LoadIconW, PostQuitMessage, RegisterClassW, SendMessageW,
+    IsWindowVisible, LoadIconW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW, SendMessageW,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
     BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW,
-    DI_NORMAL, GetDlgCtrlID, ICONINFO, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
-    SW_HIDE, SW_RESTORE, SW_SHOW, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
+    DI_NORMAL, GetDlgCtrlID, ICONINFO, IDNO, IDYES, MB_ICONINFORMATION, MB_YESNOCANCEL, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
+    SW_HIDE, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
     WM_CLOSE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
     WM_DRAWITEM, WM_ERASEBKGND, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP,
     WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
@@ -116,6 +116,8 @@ static mut G_FONT_SUBHEADER: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr
 static mut G_FONT_STATS: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut G_USED_PERCENT: u32 = 0;
 const WM_TRAYICON: u32 = WM_USER + 1;
+const WM_UPDATE_CHECK_RESULT: u32 = WM_USER + 2;
+const NIN_BALLOONUSERCLICK: u32 = 0x0405;
 const HOTKEY_ID: i32 = 2001;
 const PROCESS_TIMER_ID: usize = 1002;
 const TIMER_ID: usize = 1001;
@@ -354,6 +356,132 @@ static TOP_PROCESSES: Mutex<Vec<crate::core::process::ProcessMemUsage>> = Mutex:
 static G_EXT_STATS: Mutex<Option<crate::core::memory::ExtendedMemoryStats>> = Mutex::new(None);
 static G_TIMER_GUARD: Mutex<Option<crate::core::timer_res::TimerResolutionGuard>> = Mutex::new(None);
 static G_IDLE_CLEANED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static G_PENDING_UPDATE: Mutex<Option<crate::core::updater::ReleaseInfo>> = Mutex::new(None);
+static LAST_UPDATE_CHECK: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn trigger_update_check(hwnd: HWND, is_manual: bool) {
+    let hwnd_val = hwnd as usize;
+    if let Ok(mut lock) = LAST_UPDATE_CHECK.lock() {
+        *lock = Some(Instant::now());
+    }
+    std::thread::spawn(move || {
+        if !is_manual {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+        }
+        match crate::core::updater::check_for_update() {
+            Ok(Some(info)) => {
+                if let Ok(mut lock) = G_PENDING_UPDATE.lock() {
+                    *lock = Some(info);
+                }
+                unsafe {
+                    PostMessageW(hwnd_val as _, WM_UPDATE_CHECK_RESULT, 1, is_manual as _);
+                }
+            }
+            Ok(None) => {
+                if is_manual {
+                    unsafe {
+                        PostMessageW(hwnd_val as _, WM_UPDATE_CHECK_RESULT, 0, 1);
+                    }
+                }
+            }
+            Err(_e) => {
+                if is_manual {
+                    unsafe {
+                        PostMessageW(hwnd_val as _, WM_UPDATE_CHECK_RESULT, 2, 1);
+                    }
+                }
+            }
+        }
+    });
+}
+
+unsafe fn prompt_pending_update(hwnd: HWND) {
+    let pending = G_PENDING_UPDATE.lock().ok().and_then(|guard| guard.clone());
+    if let Some(release) = pending {
+        let msg = format!(
+            "A new version of MemClean is available!\n\n\
+            Current version: v{}\n\
+            Latest version: {}\n\n\
+            Would you like to download and install the update now?\n\n\
+            • Click [Yes] to automatically download & launch installer.\n\
+            • Click [No] to view the release notes on GitHub.\n\
+            • Click [Cancel] to update later.",
+            env!("CARGO_PKG_VERSION"),
+            release.tag_name
+        );
+        let title = format!("MemClean Update Available - {}", release.tag_name);
+        let msg_w: Vec<u16> = msg.encode_utf16().chain(std::iter::once(0)).collect();
+        let title_w: Vec<u16> = title.encode_utf16().chain(std::iter::once(0)).collect();
+
+        let res = MessageBoxW(
+            hwnd,
+            msg_w.as_ptr(),
+            title_w.as_ptr(),
+            MB_YESNOCANCEL | MB_ICONINFORMATION,
+        );
+
+        if res == IDYES {
+            if let Some(download_url) = release.setup_download_url {
+                show_tray_notification(hwnd, "MemClean Update", "Downloading update installer in background...");
+                set_text(hwnd, 103, "Status: Downloading update installer...");
+                let hwnd_val = hwnd as usize;
+                let html_url = release.html_url.clone();
+                std::thread::spawn(move || {
+                    let temp_installer = std::env::temp_dir().join("MemClean_Setup.exe");
+                    match crate::core::updater::download_file(&download_url, &temp_installer) {
+                        Ok(()) => {
+                            let path_w: Vec<u16> = temp_installer
+                                .to_string_lossy()
+                                .encode_utf16()
+                                .chain(std::iter::once(0))
+                                .collect();
+                            ShellExecuteW(
+                                0 as _,
+                                windows_sys::w!("open"),
+                                path_w.as_ptr(),
+                                std::ptr::null(),
+                                std::ptr::null(),
+                                SW_SHOWNORMAL as i32,
+                            );
+                            PostMessageW(hwnd_val as _, WM_CLOSE, 0, 0);
+                        }
+                        Err(_) => {
+                            let url_w: Vec<u16> = html_url.encode_utf16().chain(std::iter::once(0)).collect();
+                            ShellExecuteW(
+                                0 as _,
+                                windows_sys::w!("open"),
+                                url_w.as_ptr(),
+                                std::ptr::null(),
+                                std::ptr::null(),
+                                SW_SHOWNORMAL as i32,
+                            );
+                        }
+                    }
+                });
+            } else {
+                let url_w: Vec<u16> = release.html_url.encode_utf16().chain(std::iter::once(0)).collect();
+                ShellExecuteW(
+                    0 as _,
+                    windows_sys::w!("open"),
+                    url_w.as_ptr(),
+                    std::ptr::null(),
+                    std::ptr::null(),
+                    SW_SHOWNORMAL as i32,
+                );
+            }
+        } else if res == IDNO {
+            let url_w: Vec<u16> = release.html_url.encode_utf16().chain(std::iter::once(0)).collect();
+            ShellExecuteW(
+                0 as _,
+                windows_sys::w!("open"),
+                url_w.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL as i32,
+            );
+        }
+    }
+}
 fn get_config() -> AppConfig {
     let mut lock = CACHED_CONFIG.lock().unwrap();
     if lock.is_none() {
@@ -634,6 +762,9 @@ pub fn run_application(start_minimized: bool) {
         if !sync_global_hotkey(hwnd, get_config().general.global_hotkey_enabled) {
             set_text(hwnd, 103, "Status: Ctrl+Alt+M is already in use.");
         }
+        if get_config().updates.check_on_startup {
+            trigger_update_check(hwnd, false);
+        }
 
         let mut msg: MSG = std::mem::zeroed();
         while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
@@ -673,6 +804,47 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         ShowWindow(hwnd, SW_RESTORE);
                         SetForegroundWindow(hwnd);
                     }
+                }
+            } else if event == NIN_BALLOONUSERCLICK {
+                prompt_pending_update(hwnd);
+            }
+            0
+        }
+        WM_UPDATE_CHECK_RESULT => {
+            let status = wparam as u32;
+            let is_manual = lparam != 0;
+            if status == 1 {
+                let tag = G_PENDING_UPDATE
+                    .lock()
+                    .ok()
+                    .and_then(|g| g.as_ref().map(|r| r.tag_name.clone()))
+                    .unwrap_or_else(|| "new version".to_string());
+                show_tray_notification(
+                    hwnd,
+                    "MemClean Update Available",
+                    &format!("Version {} is available! Click this notification to update.", tag),
+                );
+                set_text(hwnd, 103, &format!("Status: Update available ({}).", tag));
+                if is_manual {
+                    prompt_pending_update(hwnd);
+                }
+            } else if status == 0 {
+                if is_manual {
+                    show_tray_notification(
+                        hwnd,
+                        "MemClean",
+                        &format!("You are running the latest version (v{}).", env!("CARGO_PKG_VERSION")),
+                    );
+                    set_text(hwnd, 103, "Status: MemClean is up to date.");
+                }
+            } else if status == 2 {
+                if is_manual {
+                    show_tray_notification(
+                        hwnd,
+                        "MemClean Update Check",
+                        "Could not reach GitHub Releases. Check your internet connection.",
+                    );
+                    set_text(hwnd, 103, "Status: Update check failed.");
                 }
             }
             0
@@ -779,6 +951,17 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     }
                 }
 
+                // 5. Periodic 24-hour update check
+                if config.updates.check_on_startup {
+                    let should_check = {
+                        let lock = LAST_UPDATE_CHECK.lock().unwrap();
+                        lock.map_or(true, |last| now.duration_since(last).as_secs() >= 86400)
+                    };
+                    if should_check {
+                        trigger_update_check(hwnd, false);
+                    }
+                }
+
                 update_stats_display(hwnd);
 
                 let new_icon = create_percent_icon(stats.used_percent);
@@ -847,6 +1030,10 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let updated_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
                     set_text(hwnd, 103, &format!("Status: Timer resolution set to {:.3} ms.", updated_res));
                     InvalidateRect(hwnd, std::ptr::null(), 0);
+                }
+                509 => { // Check for Updates...
+                    set_text(hwnd, 103, "Status: Checking for updates...");
+                    trigger_update_check(hwnd, true);
                 }
                 401 | 506 => { // Settings dialog
                     save_config_from_controls(hwnd);
@@ -1191,6 +1378,7 @@ unsafe fn show_tray_menu(hwnd: HWND, x: i32, y: i32) {
     AppendMenuW(menu, MF_STRING, 507, windows_sys::w!("Combine Duplicate Pages"));
     AppendMenuW(menu, MF_STRING, 508, windows_sys::w!("Toggle 0.5ms Timer Resolution"));
     AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
+    AppendMenuW(menu, MF_STRING, 509, windows_sys::w!("Check for Updates..."));
     AppendMenuW(menu, MF_STRING, 506, windows_sys::w!("Settings..."));
     AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null());
     AppendMenuW(menu, MF_STRING, 505, windows_sys::w!("Exit"));

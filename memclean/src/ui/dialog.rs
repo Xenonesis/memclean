@@ -163,6 +163,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         create_radio(windows_sys::w!("Click Optimizes Memory Instantly"), 248, 202);
         create_chk(windows_sys::w!("Enable Global Hotkey (Ctrl + Alt + M)"), 284, 204);
         create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 306, 203);
+        create_chk(windows_sys::w!("Automatically check for updates on startup"), 328, 214);
 
         // Card 2: RAM Threshold Controls
         let lbl_thresh = CreateWindowExW(
@@ -348,6 +349,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         }
         set_checked(hwnd, 203, cfg.general.start_minimized);
         set_checked(hwnd, 204, cfg.general.global_hotkey_enabled);
+        set_checked(hwnd, 214, cfg.updates.check_on_startup);
         let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
         let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
         SetWindowTextW(edit_thresh, thresh_wide.as_ptr());
@@ -566,6 +568,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
 
                 cfg.general.start_minimized = is_checked(hwnd, 203);
                 cfg.general.global_hotkey_enabled = is_checked(hwnd, 204);
+                cfg.updates.check_on_startup = is_checked(hwnd, 214);
 
                 let mut buf = [0u16; 16];
                 let len = GetWindowTextW(GetDlgItem(hwnd, 205), buf.as_mut_ptr(), buf.len() as i32);

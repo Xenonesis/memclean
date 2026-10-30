@@ -181,6 +181,23 @@ pub struct TriggersConfig {
     #[serde(default = "default_idle_seconds")]
     pub idle_seconds: u32,
 }
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UpdatesConfig {
+    #[serde(default = "default_true")]
+    pub check_on_startup: bool,
+    #[serde(default)]
+    pub last_check_timestamp: u64,
+}
+
+impl Default for UpdatesConfig {
+    fn default() -> Self {
+        Self {
+            check_on_startup: true,
+            last_check_timestamp: 0,
+        }
+    }
+}
+
 
 impl Default for TriggersConfig {
     fn default() -> Self {
@@ -279,6 +296,8 @@ pub struct AppConfig {
     pub tray: TrayConfig,
     #[serde(default = "default_exclusions", deserialize_with = "deserialize_exclusions")]
     pub exclusions: Vec<String>,
+    #[serde(default)]
+    pub updates: UpdatesConfig,
 }
 
 impl Default for AppConfig {
@@ -290,6 +309,7 @@ impl Default for AppConfig {
             tuning: TuningConfig::default(),
             tray: TrayConfig::default(),
             exclusions: default_exclusions(),
+            updates: UpdatesConfig::default(),
         }
     }
 }
@@ -404,5 +424,29 @@ click_action = "OpenDashboard"
 "#;
         let restored_legacy: AppConfig = toml::from_str(legacy).unwrap();
         assert_eq!(restored_legacy.triggers.timer_minutes, Some(5));
+    }
+
+    #[test]
+    fn test_updates_config_defaults_and_roundtrip() {
+        let mut config = AppConfig::default();
+        assert!(config.updates.check_on_startup);
+        assert_eq!(config.updates.last_check_timestamp, 0);
+
+        config.updates.check_on_startup = false;
+        config.updates.last_check_timestamp = 1730310000;
+        let serialized = toml::to_string(&config).unwrap();
+        let restored: AppConfig = toml::from_str(&serialized).unwrap();
+        assert!(!restored.updates.check_on_startup);
+        assert_eq!(restored.updates.last_check_timestamp, 1730310000);
+
+        // Legacy config missing [updates] table
+        let legacy = r#"
+exclusions = ["explorer.exe"]
+[general]
+run_on_startup = true
+"#;
+        let restored_legacy: AppConfig = toml::from_str(legacy).unwrap();
+        assert!(restored_legacy.updates.check_on_startup);
+        assert_eq!(restored_legacy.updates.last_check_timestamp, 0);
     }
 }
