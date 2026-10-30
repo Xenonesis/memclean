@@ -10,6 +10,8 @@ pub struct CleanResult {
     pub processes_trimmed: usize,
     pub pages_combined: usize,
     pub mb_combined: f32,
+    pub vram_processes_trimmed: usize,
+    pub vram_mb_trimmed: f32,
 }
 
 pub fn perform_clean(config: &AppConfig, force_aggressive: bool) -> CleanResult {
@@ -77,6 +79,13 @@ pub fn perform_clean(config: &AppConfig, force_aggressive: bool) -> CleanResult 
         }
     }
 
+    // 6. GPU VRAM Cache Decommitment
+    if config.tuning.vram_trim_on_clean || force_aggressive {
+        let vram_report = crate::core::vram::trim_all_vram(&config.exclusions);
+        result.vram_processes_trimmed = vram_report.processes_trimmed;
+        result.vram_mb_trimmed = vram_report.mb_decommitted as f32;
+    }
+
     result
 }
 
@@ -106,4 +115,8 @@ pub fn trim_working_sets_only(config: &AppConfig) -> usize {
         }
     }
     count
+}
+
+pub fn trim_vram_only(config: &AppConfig) -> crate::core::vram::VramTrimReport {
+    crate::core::vram::trim_all_vram(&config.exclusions)
 }

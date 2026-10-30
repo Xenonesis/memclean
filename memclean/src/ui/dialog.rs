@@ -45,7 +45,7 @@ const TAB_1_CTRLS: &[i32] = &[
     205, 206, 207, 208, 209, 210, 211, 212, 213,
     220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233,
 ];
-const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 251, 250, 252, 260, 261, 262];
+const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 251, 250, 270, 252, 260, 261, 262];
 
 const BST_CHECKED: usize = 1;
 const BST_UNCHECKED: usize = 0;
@@ -410,40 +410,40 @@ pub fn show_settings_dialog(_parent: HWND) {
             SendMessageW(lbl_res_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
         }
 
-        // Card 2: Kernel Page Combining & Network Latency
-        create_chk(windows_sys::w!("Enable Kernel Page Combining on Clean"), 30, 266, 420, 250);
+        // Card 2: Kernel Page Combining, VRAM & Network Latency
+        create_chk(windows_sys::w!("Enable Kernel Page Combining (RAM De-duplication)"), 30, 262, 420, 250);
+        create_chk(windows_sys::w!("Enable GPU / VRAM Decommitment on Clean (WDDM 2.1+)"), 30, 284, 420, 270);
 
         let lbl_page_desc = CreateWindowExW(
             0, windows_sys::w!("STATIC"),
-            windows_sys::w!("De-duplicates identical physical RAM pages into Copy-on-Write pages."),
+            windows_sys::w!("Scans physical RAM for duplicate pages and decommits unreferenced GPU texture buffers."),
             WS_CHILD | WS_VISIBLE,
-            30, 288, 420, 18, hwnd, 252 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            30, 306, 420, 18, hwnd, 252 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !lbl_page_desc.is_null() && !D_FONT_DESC.is_null() {
             SendMessageW(lbl_page_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
         }
 
-        create_chk(windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"), 30, 334, 420, 260);
-
-        let lbl_net_desc = CreateWindowExW(
-            0, windows_sys::w!("STATIC"),
-            windows_sys::w!("Disables Nagle's delayed ACKs and allocates 100% network CPU to games."),
-            WS_CHILD | WS_VISIBLE,
-            30, 356, 420, 18, hwnd, 262 as _, std::ptr::null_mut(), std::ptr::null_mut(),
-        );
-        if !lbl_net_desc.is_null() && !D_FONT_DESC.is_null() {
-            SendMessageW(lbl_net_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
-        }
+        create_chk(windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"), 30, 344, 420, 260);
 
         let btn_net_restore = CreateWindowExW(
             0, windows_sys::w!("BUTTON"), windows_sys::w!("Restore Network Defaults"),
             WS_CHILD | WS_VISIBLE,
-            30, 380, 175, 22, hwnd, 261 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            30, 374, 165, 22, hwnd, 261 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !btn_net_restore.is_null() && !D_FONT_UI.is_null() {
             SendMessageW(btn_net_restore, WM_SETFONT, D_FONT_UI as WPARAM, 1);
         }
 
+        let lbl_net_desc = CreateWindowExW(
+            0, windows_sys::w!("STATIC"),
+            windows_sys::w!("No delayed ACKs, 100% CPU priority."),
+            WS_CHILD | WS_VISIBLE,
+            205, 377, 245, 18, hwnd, 262 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_net_desc.is_null() && !D_FONT_DESC.is_null() {
+            SendMessageW(lbl_net_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
+        }
         // Load current config into controls
         let cfg = AppConfig::load();
         match cfg.tray.style {
@@ -463,6 +463,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         set_checked(hwnd, 204, cfg.general.global_hotkey_enabled);
         set_checked(hwnd, 214, cfg.updates.check_on_startup);
         set_checked(hwnd, 260, cfg.network.low_latency_enabled);
+        set_checked(hwnd, 270, cfg.tuning.vram_trim_on_clean);
 
         let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
         let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
@@ -595,10 +596,10 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                     let mut hpage_rc = RECT { left: 30, top: 248, right: 454, bottom: 262 };
                     DrawTextW(hdc, windows_sys::w!("MEMORY DE-DUPLICATION (NT KERNEL)"), -1, &mut hpage_rc, DT_SINGLELINE);
 
-                    MoveToEx(hdc, 30, 312, std::ptr::null_mut());
-                    LineTo(hdc, 454, 312);
+                    MoveToEx(hdc, 30, 328, std::ptr::null_mut());
+                    LineTo(hdc, 454, 328);
 
-                    let mut hnet_rc = RECT { left: 30, top: 318, right: 454, bottom: 332 };
+                    let mut hnet_rc = RECT { left: 30, top: 332, right: 454, bottom: 344 };
                     DrawTextW(hdc, windows_sys::w!("COMPETITIVE NETWORK STACK (LOW PING)"), -1, &mut hnet_rc, DT_SINGLELINE);
                 }
             }
@@ -803,6 +804,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 }
 
                 cfg.tuning.combine_pages_on_clean = is_checked(hwnd, 250);
+                cfg.tuning.vram_trim_on_clean = is_checked(hwnd, 270);
                 let net_opt_checked = is_checked(hwnd, 260);
                 if net_opt_checked != cfg.network.low_latency_enabled {
                     cfg.network.low_latency_enabled = net_opt_checked;
@@ -882,7 +884,7 @@ mod tests {
             101, 102, 103, 104, 105, 201, 202, 203, 204, 214, // Tab 0
             205, 206, 207, 208, 209, 210, 211, 212, 213, // Tab 1 threshold & timer
             220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233, // Tab 1 islc & idle
-            240, 241, 242, 250, 251, 252, 260, 261, 262, // Tab 2 kernel, de-dup & network
+            240, 241, 242, 250, 270, 251, 252, 260, 261, 262, // Tab 2 kernel, de-dup, vram & network
         ];
         for &id in &expected {
             let in_0 = TAB_0_CTRLS.contains(&id);

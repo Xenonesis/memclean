@@ -231,6 +231,8 @@ pub struct TuningConfig {
     pub timer_resolution_mode: String, // "0.5ms", "1.0ms", or "default"
     #[serde(default)]
     pub combine_pages_on_clean: bool,
+    #[serde(default)]
+    pub vram_trim_on_clean: bool,
 }
 
 fn default_timer_res_mode() -> String {
@@ -243,6 +245,7 @@ impl Default for TuningConfig {
             timer_resolution_enabled: false,
             timer_resolution_mode: default_timer_res_mode(),
             combine_pages_on_clean: false,
+            vram_trim_on_clean: false,
         }
     }
 }

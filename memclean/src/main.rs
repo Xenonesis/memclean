@@ -199,6 +199,8 @@ fn print_help() {
     print_line("      --network-status      Print current Windows TCP and multimedia network throttling state");
     print_line("      --network-optimize    Apply competitive low-latency TCP stack (TCPNoDelay, instant ACKs)");
     print_line("      --network-restore     Restore Windows default network throttling and TCP stack settings");
+    print_line("      --vram, --gpu-status  Display detected GPU adapters, dedicated VRAM, and shared RAM");
+    print_line("      --vram-trim           Decommit and purge eligible GPU video memory commitments (WDDM)");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -415,6 +417,42 @@ fn main() {
             }
             return;
         }
+        if args.iter().any(|a| a == "--vram" || a == "--gpu-status") {
+            let adapters = memclean::core::vram::get_gpu_adapters();
+            print_line("=== MemClean GPU & Video Memory (VRAM) Diagnostics ===");
+            if adapters.is_empty() {
+                print_line("No DXGI hardware adapters detected.");
+            } else {
+                for a in adapters {
+                    print_line(&format!(
+                        "[{}] {} (Vendor: 0x{:04X}, Device: 0x{:04X})",
+                        a.index, a.description, a.vendor_id, a.device_id
+                    ));
+                    print_line(&format!(
+                        "    Dedicated VRAM       : {} MB",
+                        a.dedicated_vram_mb
+                    ));
+                    print_line(&format!(
+                        "    Dedicated System RAM : {} MB",
+                        a.dedicated_system_mb
+                    ));
+                    print_line(&format!(
+                        "    Shared System RAM    : {} MB",
+                        a.shared_system_mb
+                    ));
+                }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--vram-trim") {
+            let report = cleaner::trim_vram_only(&config);
+            print_line(&format!(
+                "GPU VRAM trim executed: {:.2} MB video memory decommitted across {} processes.",
+                report.mb_decommitted, report.processes_trimmed
+            ));
+            return;
+        }
 
         let timer_res_pos = args.iter().position(|a| a == "--timer-res");
         let timer_res_eq = args.iter().find(|a| a.starts_with("--timer-res="));
@@ -459,14 +497,20 @@ fn main() {
         let is_aggressive = args.iter().any(|a| a == "--aggressive" || a == "-a");
         if is_clean || is_aggressive {
             let res = cleaner::perform_clean(&config, is_aggressive);
+            let vram_msg = if res.vram_processes_trimmed > 0 {
+                format!(", VRAM: {:.1} MB trimmed ({} procs)", res.vram_mb_trimmed, res.vram_processes_trimmed)
+            } else {
+                String::new()
+            };
             print_line(&format!(
-                "Clean complete: Standby: {}, Modified: {}, Cache: {}, Processes trimmed: {}, Pages combined: {} ({:.1} MB)",
+                "Clean complete: Standby: {}, Modified: {}, Cache: {}, Processes trimmed: {}, Pages combined: {} ({:.1} MB){}",
                 res.standby_purged,
                 res.modified_flushed,
                 res.file_cache_trimmed,
                 res.processes_trimmed,
                 res.pages_combined,
-                res.mb_combined
+                res.mb_combined,
+                vram_msg
             ));
             return;
         }

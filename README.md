@@ -209,6 +209,8 @@ MemClean is a dual-mode binary. When invoked with command-line arguments, it aut
 | `memclean.exe --network-status` | Prints current Windows TCP stack, network throttling, and interface latency state. | Competitive gaming diagnostic. |
 | `memclean.exe --network-optimize` | Applies competitive low-latency TCP stack (`TCPNoDelay`, instant ACKs, no throttling). | Competitive multiplayer optimization. |
 | `memclean.exe --network-restore` | Restores original Windows default network throttling and TCP settings from atomic backup. | Safe 1-click network rollback. |
+| `memclean.exe --vram` / `--gpu-status` | Displays detected GPU hardware adapters, dedicated VRAM, and shared system memory. | Multi-GPU / VRAM telemetry. |
+| `memclean.exe --vram-trim` | Decommits and purges eligible GPU video memory commitments via WDDM (`D3DKMTTrimProcessCommitment`). | Post-game VRAM defragmentation. |
 | `memclean.exe --silent` / `-s` | Suppresses console stdout (exit code 0 on success). | Silent batch scripts and Task Scheduler runs. |
 | `memclean.exe --autostart` | Registers elevated auto-start in Windows Task Scheduler (`schtasks`). | Post-install automated configuration. |
 | `memclean.exe --no-autostart`| Removes elevated auto-start task from Task Scheduler. | Deconfiguration / uninstallation. |
