@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">MemClean Concept C — Kernel Shield</title>
+  <!-- Compound path with evenodd fill rule for perfect negative space aperture -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 76 32
+    L 180 32
+    L 224 76
+    L 224 132
+    L 128 228
+    L 32 132
+    L 32 76
+    Z
+    M 84 60
+    L 56 88
+    L 56 124
+    L 128 196
+    L 200 124
+    L 200 88
+    L 172 60
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg>

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-a">
+  <title id="title-a">MemClean Concept A — Kinetic Purge</title>
+  <g id="symbol">
+    <!-- Top-Right Purge Wedge -->
+    <path fill="#000000" d="
+      M 72 32
+      L 200 32
+      C 216 32 224 40 224 56
+      L 224 184
+      L 168 184
+      L 168 104
+      C 168 96 160 88 152 88
+      L 72 88
+      Z" />
+    <!-- Bottom-Left Reclaimed Wedge -->
+    <path fill="#000000" d="
+      M 32 72
+      L 88 72
+      L 88 152
+      C 88 160 96 168 104 168
+      L 184 168
+      L 184 224
+      L 56 224
+      C 40 224 32 216 32 200
+      Z" />
+    <!-- Center Purged Core Diamond -->
+    <path fill="#000000" d="
+      M 128 104
+      L 152 128
+      L 128 152
+      L 104 128
+      Z" />
+  </g>
+</svg>

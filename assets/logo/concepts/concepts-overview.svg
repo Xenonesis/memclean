@@ -1,0 +1,321 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="840" viewBox="0 0 1600 840"><rect width="1600" height="840" fill="#f7f7f4"/><text x="60" y="78" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="40" font-weight="700" fill="#161616">MemClean — Logo Concepts</text><text x="60" y="116" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="20" fill="#6b6b6b">Concepts for review — pick a direction (or tell me what you like in each).</text><rect x="60" y="150" width="474.667" height="630" rx="18" fill="#fff" stroke="#e4e4e0" stroke-width="1"/><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="90" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c0-title-a">MemClean Concept A — Kinetic Aperture</title>
+  <g id="c0-symbol">
+    <!-- Top-Right Tapered Sweep -->
+    <path fill="#000000" d="
+      M 104 32
+      L 144 32
+      C 192.6 32 232 71.4 232 120
+      L 232 160
+      L 188 160
+      L 188 120
+      C 188 95.7 168.3 76 144 76
+      L 104 76
+      Z" />
+    <!-- Bottom-Left Tapered Sweep -->
+    <path fill="#000000" d="
+      M 152 224
+      L 112 224
+      C 63.4 224 24 184.6 24 136
+      L 24 96
+      L 68 96
+      L 68 136
+      C 68 160.3 87.7 180 112 180
+      L 152 180
+      Z" />
+    <!-- Central Kernel Crystal -->
+    <path fill="#000000" d="
+      M 128 104
+      L 152 128
+      L 128 152
+      L 104 128
+      Z" />
+  </g>
+</svg></g><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="90" y="516" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s064-title-a">MemClean Concept A — Kinetic Aperture</title>
+  <g id="s064-symbol">
+    <!-- Top-Right Tapered Sweep -->
+    <path fill="#000000" d="
+      M 104 32
+      L 144 32
+      C 192.6 32 232 71.4 232 120
+      L 232 160
+      L 188 160
+      L 188 120
+      C 188 95.7 168.3 76 144 76
+      L 104 76
+      Z" />
+    <!-- Bottom-Left Tapered Sweep -->
+    <path fill="#000000" d="
+      M 152 224
+      L 112 224
+      C 63.4 224 24 184.6 24 136
+      L 24 96
+      L 68 96
+      L 68 136
+      C 68 160.3 87.7 180 112 180
+      L 152 180
+      Z" />
+    <!-- Central Kernel Crystal -->
+    <path fill="#000000" d="
+      M 128 104
+      L 152 128
+      L 128 152
+      L 104 128
+      Z" />
+  </g>
+</svg></g><text x="122" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="180" y="548" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s032-title-a">MemClean Concept A — Kinetic Aperture</title>
+  <g id="s032-symbol">
+    <!-- Top-Right Tapered Sweep -->
+    <path fill="#000000" d="
+      M 104 32
+      L 144 32
+      C 192.6 32 232 71.4 232 120
+      L 232 160
+      L 188 160
+      L 188 120
+      C 188 95.7 168.3 76 144 76
+      L 104 76
+      Z" />
+    <!-- Bottom-Left Tapered Sweep -->
+    <path fill="#000000" d="
+      M 152 224
+      L 112 224
+      C 63.4 224 24 184.6 24 136
+      L 24 96
+      L 68 96
+      L 68 136
+      C 68 160.3 87.7 180 112 180
+      L 152 180
+      Z" />
+    <!-- Central Kernel Crystal -->
+    <path fill="#000000" d="
+      M 128 104
+      L 152 128
+      L 128 152
+      L 104 128
+      Z" />
+  </g>
+</svg></g><text x="196" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-a" viewBox="0 0 256 256" x="238" y="564" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s016-title-a">MemClean Concept A — Kinetic Aperture</title>
+  <g id="s016-symbol">
+    <!-- Top-Right Tapered Sweep -->
+    <path fill="#000000" d="
+      M 104 32
+      L 144 32
+      C 192.6 32 232 71.4 232 120
+      L 232 160
+      L 188 160
+      L 188 120
+      C 188 95.7 168.3 76 144 76
+      L 104 76
+      Z" />
+    <!-- Bottom-Left Tapered Sweep -->
+    <path fill="#000000" d="
+      M 152 224
+      L 112 224
+      C 63.4 224 24 184.6 24 136
+      L 24 96
+      L 68 96
+      L 68 136
+      C 68 160.3 87.7 180 112 180
+      L 152 180
+      Z" />
+    <!-- Central Kernel Crystal -->
+    <path fill="#000000" d="
+      M 128 104
+      L 152 128
+      L 128 152
+      L 104 128
+      Z" />
+  </g>
+</svg></g><text x="246" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="90.0" y="636" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">A · Kinetic Aperture</text><text x="90.0" y="670" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Aerodynamic orbital sweepers orbiting a</text><text x="90.0" y="696" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">floating diamond kernel core.</text><rect x="562.667" y="150" width="474.667" height="630" rx="18" fill="#fff" stroke="#161616" stroke-width="2"/><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="592.667" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c1-title-b">MemClean Concept B — Monogram Core</title>
+  <path fill="#000000" d="
+    M 36 52
+    C 36 40 44 32 56 32
+    L 80 32
+    L 128 80
+    L 176 32
+    L 200 32
+    C 212 32 220 40 220 52
+    L 220 208
+    C 220 218 212 224 200 224
+    L 172 224
+    C 164 224 160 218 160 210
+    L 160 96
+    L 128 128
+    L 96 96
+    L 96 210
+    C 96 218 92 224 84 224
+    L 56 224
+    C 44 224 36 218 36 208
+    Z" />
+</svg></g><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="592.667" y="516" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s164-title-b">MemClean Concept B — Monogram Core</title>
+  <path fill="#000000" d="
+    M 36 52
+    C 36 40 44 32 56 32
+    L 80 32
+    L 128 80
+    L 176 32
+    L 200 32
+    C 212 32 220 40 220 52
+    L 220 208
+    C 220 218 212 224 200 224
+    L 172 224
+    C 164 224 160 218 160 210
+    L 160 96
+    L 128 128
+    L 96 96
+    L 96 210
+    C 96 218 92 224 84 224
+    L 56 224
+    C 44 224 36 218 36 208
+    Z" />
+</svg></g><text x="624.667" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="682.667" y="548" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s132-title-b">MemClean Concept B — Monogram Core</title>
+  <path fill="#000000" d="
+    M 36 52
+    C 36 40 44 32 56 32
+    L 80 32
+    L 128 80
+    L 176 32
+    L 200 32
+    C 212 32 220 40 220 52
+    L 220 208
+    C 220 218 212 224 200 224
+    L 172 224
+    C 164 224 160 218 160 210
+    L 160 96
+    L 128 128
+    L 96 96
+    L 96 210
+    C 96 218 92 224 84 224
+    L 56 224
+    C 44 224 36 218 36 208
+    Z" />
+</svg></g><text x="698.667" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-b" viewBox="0 0 256 256" x="740.667" y="564" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s116-title-b">MemClean Concept B — Monogram Core</title>
+  <path fill="#000000" d="
+    M 36 52
+    C 36 40 44 32 56 32
+    L 80 32
+    L 128 80
+    L 176 32
+    L 200 32
+    C 212 32 220 40 220 52
+    L 220 208
+    C 220 218 212 224 200 224
+    L 172 224
+    C 164 224 160 218 160 210
+    L 160 96
+    L 128 128
+    L 96 96
+    L 96 210
+    C 96 218 92 224 84 224
+    L 56 224
+    C 44 224 36 218 36 208
+    Z" />
+</svg></g><text x="748.667" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="592.6666666666667" y="636" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">B · Monogram Core</text><text x="592.6666666666667" y="664" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="15" font-weight="700" fill="#161616" letter-spacing="1.5">RECOMMENDED</text><text x="592.6666666666667" y="698" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Architectural M monogram with dual RAM</text><text x="592.6666666666667" y="724" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">columns and central 45° purge chevron.</text><rect x="1065.33" y="150" width="474.667" height="630" rx="18" fill="#fff" stroke="#e4e4e0" stroke-width="1"/><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1095.33" y="190" width="414.667" height="300" preserveAspectRatio="xMidYMid meet">
+  <title id="c2-title-c">MemClean Concept C — Kernel Shield</title>
+  <!-- Compound path with evenodd fill rule for perfect negative space aperture -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 76 32
+    L 180 32
+    L 224 76
+    L 224 132
+    L 128 228
+    L 32 132
+    L 32 76
+    Z
+    M 84 60
+    L 56 88
+    L 56 124
+    L 128 196
+    L 200 124
+    L 200 88
+    L 172 60
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg></g><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1095.33" y="516" width="64" height="64" preserveAspectRatio="xMidYMid meet">
+  <title id="s264-title-c">MemClean Concept C — Kernel Shield</title>
+  <!-- Compound path with evenodd fill rule for perfect negative space aperture -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 76 32
+    L 180 32
+    L 224 76
+    L 224 132
+    L 128 228
+    L 32 132
+    L 32 76
+    Z
+    M 84 60
+    L 56 88
+    L 56 124
+    L 128 196
+    L 200 124
+    L 200 88
+    L 172 60
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg></g><text x="1127.33" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">64px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1185.33" y="548" width="32" height="32" preserveAspectRatio="xMidYMid meet">
+  <title id="s232-title-c">MemClean Concept C — Kernel Shield</title>
+  <!-- Compound path with evenodd fill rule for perfect negative space aperture -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 76 32
+    L 180 32
+    L 224 76
+    L 224 132
+    L 128 228
+    L 32 132
+    L 32 76
+    Z
+    M 84 60
+    L 56 88
+    L 56 124
+    L 128 196
+    L 200 124
+    L 200 88
+    L 172 60
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg></g><text x="1201.33" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">32px</text><g><svg xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-c" viewBox="0 0 256 256" x="1243.33" y="564" width="16" height="16" preserveAspectRatio="xMidYMid meet">
+  <title id="s216-title-c">MemClean Concept C — Kernel Shield</title>
+  <!-- Compound path with evenodd fill rule for perfect negative space aperture -->
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 76 32
+    L 180 32
+    L 224 76
+    L 224 132
+    L 128 228
+    L 32 132
+    L 32 76
+    Z
+    M 84 60
+    L 56 88
+    L 56 124
+    L 128 196
+    L 200 124
+    L 200 88
+    L 172 60
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg></g><text x="1251.33" y="600" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="12" fill="#8a8a8a" text-anchor="middle">16px</text><text x="1095.3333333333335" y="636" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="26" font-weight="700" fill="#161616">C · Kernel Shield</text><text x="1095.3333333333335" y="670" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">Chamfered silicon die embedding a</text><text x="1095.3333333333335" y="696" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">protective shield aperture and memory</text><text x="1095.3333333333335" y="722" font-family="system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" fill="#555">crystal.</text></svg>

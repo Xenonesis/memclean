@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-a">
+  <title id="title-a">MemClean Concept A — Kinetic Loop</title>
+  <g id="symbol">
+    <!-- Top Arc: Sweeping clock-wise purge vector -->
+    <path fill="#000000" d="
+      M 128 32
+      A 96 96 0 0 1 224 128
+      L 176 128
+      A 48 48 0 0 0 128 80
+      L 128 32
+      Z" />
+    <!-- Bottom Arc: Counter sweep -->
+    <path fill="#000000" d="
+      M 128 224
+      A 96 96 0 0 1 32 128
+      L 80 128
+      A 48 48 0 0 0 128 176
+      L 128 224
+      Z" />
+    <!-- Central Reclaimed Diamond -->
+    <path fill="#000000" d="
+      M 128 108
+      L 148 128
+      L 128 148
+      L 108 128
+      Z" />
+  </g>
+</svg>

@@ -2,21 +2,24 @@ use crate::config::AppConfig;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetMessageW,
-    IsDialogMessageW, MessageBoxW, RegisterClassW, ShowWindow, BS_AUTOCHECKBOX, BS_PUSHBUTTON,
-    MB_ICONINFORMATION, MB_OK, MSG, SW_SHOW, WM_COMMAND, WM_DESTROY, WNDCLASSW, WS_CHILD,
-    WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+    IsDialogMessageW, LoadIconW, MessageBoxW, RegisterClassW, SendMessageW, ShowWindow,
+    BS_AUTOCHECKBOX, BS_PUSHBUTTON, MB_ICONINFORMATION, MB_OK, MSG, SW_SHOW,
+    WM_COMMAND, WM_DESTROY, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
 
 pub fn show_settings_dialog(_parent: HWND) {
     unsafe {
         let class_name = windows_sys::w!("MemCleanSettingsClass");
+        let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
+        let app_icon = LoadIconW(hinstance, 1 as _);
+
         let wc = WNDCLASSW {
             style: 0,
             lpfnWndProc: Some(dialog_wnd_proc),
             cbClsExtra: 0,
             cbWndExtra: 0,
-            hInstance: std::ptr::null_mut(),
-            hIcon: std::ptr::null_mut(),
+            hInstance: hinstance,
+            hIcon: app_icon,
             hCursor: std::ptr::null_mut(),
             hbrBackground: 6 as _, // COLOR_WINDOW
             lpszMenuName: std::ptr::null(),
@@ -35,6 +38,10 @@ pub fn show_settings_dialog(_parent: HWND) {
             std::ptr::null_mut(),
             std::ptr::null_mut(),
         );
+        if !app_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
+            SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
+        }
 
         // Checkboxes for features
         CreateWindowExW(

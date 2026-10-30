@@ -12,6 +12,8 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=admin
 CloseApplications=yes
+SetupIconFile=memclean.ico
+UninstallDisplayIcon={app}\memclean.exe
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-a">
+  <title id="title-a">MemClean — Kinetic Purge</title>
+  <g id="symbol">
+    <!-- Upper Wing: Sweeping memory blade -->
+    <path fill="#000000" d="M128 28 L224 124 L176 172 L128 124 L80 172 L56 148 L128 76 L164 112 L128 76 Z"/>
+    <!-- Lower Reclaimed Core -->
+    <path fill="#000000" d="M128 228 L32 132 L68 96 L128 156 L188 96 L200 108 L128 180 L80 132 L128 180 Z"/>
+    <!-- Central Kernel Spark -->
+    <path fill="#000000" d="M128 100 L146 118 L128 136 L110 118 Z"/>
+  </g>
+</svg>

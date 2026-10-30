@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-b">
+  <title id="title-b">MemClean Concept B — Monogram Core</title>
+  <path fill="#000000" d="
+    M 36 52
+    C 36 40 44 32 56 32
+    L 80 32
+    L 128 80
+    L 176 32
+    L 200 32
+    C 212 32 220 40 220 52
+    L 220 208
+    C 220 218 212 224 200 224
+    L 172 224
+    C 164 224 160 218 160 210
+    L 160 96
+    L 128 128
+    L 96 96
+    L 96 210
+    C 96 218 92 224 84 224
+    L 56 224
+    C 44 224 36 218 36 208
+    Z" />
+</svg>

@@ -16,13 +16,13 @@ use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
     DispatchMessageW, FindWindowW, GetCursorPos, GetDlgItem, GetMessageW,
-    GetSystemMetrics, IsWindowVisible, PostQuitMessage, RegisterClassW, SendMessageW,
+    GetSystemMetrics, IsWindowVisible, LoadIconW, PostQuitMessage, RegisterClassW, SendMessageW,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, TrackPopupMenu,
     BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_GROUPBOX, BS_PUSHBUTTON,
     ICONINFO, MSG, SC_MINIMIZE,
     SM_CXSCREEN, SM_CYSCREEN, SW_HIDE, SW_RESTORE, SW_SHOW, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
     WM_CLOSE, WM_COMMAND, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
-    WM_SETFONT, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
+    WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 
@@ -234,14 +234,16 @@ pub fn run_application(start_minimized: bool) {
             SetForegroundWindow(existing);
             return;
         }
+        let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
+        let app_icon = LoadIconW(hinstance, 1 as _);
 
         let wc = WNDCLASSW {
             style: 0,
             lpfnWndProc: Some(main_wnd_proc),
             cbClsExtra: 0,
             cbWndExtra: 0,
-            hInstance: std::ptr::null_mut(),
-            hIcon: std::ptr::null_mut(),
+            hInstance: hinstance,
+            hIcon: app_icon,
             hCursor: std::ptr::null_mut(),
             hbrBackground: 16 as _, // (COLOR_BTNFACE + 1)
             lpszMenuName: std::ptr::null(),
@@ -270,6 +272,11 @@ pub fn run_application(start_minimized: bool) {
 
         if hwnd.is_null() {
             return;
+        }
+
+        if !app_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
+            SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
         }
 
         let hfont = GetStockObject(DEFAULT_GUI_FONT);

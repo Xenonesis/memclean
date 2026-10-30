@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-c">
+  <title id="title-c">MemClean Concept C — Kernel Shield</title>
+  <path fill="#000000" fill-rule="evenodd" d="
+    M 80 32
+    L 176 32
+    C 188 32 196 36 204 44
+    L 224 72
+    L 224 136
+    C 224 148 216 160 204 172
+    L 128 228
+    L 52 172
+    C 40 160 32 148 32 136
+    L 32 72
+    L 52 44
+    C 60 36 68 32 80 32
+    Z
+    M 88 64
+    L 60 92
+    L 60 132
+    L 128 188
+    L 196 132
+    L 196 92
+    L 168 64
+    Z
+    M 128 92
+    L 156 120
+    L 128 148
+    L 100 120
+    Z" />
+</svg>

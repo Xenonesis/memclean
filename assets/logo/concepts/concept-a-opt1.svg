@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-a">
+  <title id="title-a">MemClean Concept A — Kinetic Elevation</title>
+  <g id="symbol">
+    <!-- Top Elevation Chevron -->
+    <path fill="#000000" d="
+      M 128 32
+      L 220 124
+      L 176 168
+      L 128 120
+      L 80 168
+      L 36 124
+      Z" />
+    <!-- Bottom Tier Chevron -->
+    <path fill="#000000" d="
+      M 128 104
+      L 204 180
+      L 176 208
+      L 128 160
+      L 80 208
+      L 52 180
+      Z" />
+    <!-- Central Reclaimed Diamond Core -->
+    <path fill="#000000" d="
+      M 128 176
+      L 144 192
+      L 128 208
+      L 112 192
+      Z" />
+  </g>
+</svg>
