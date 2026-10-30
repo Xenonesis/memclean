@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://xenonesis.github.io/memclean/"><img src="https://img.shields.io/badge/Website-Live%20Showcase-22C55E?style=flat-square&logo=googlechrome&logoColor=white" alt="Live Website" /></a>
   <a href="https://github.com/Xenonesis/memclean/releases"><img src="https://img.shields.io/github/v/release/Xenonesis/memclean?style=flat-square&color=blue" alt="GitHub Release" /></a>
   <img src="https://img.shields.io/badge/Rust-2021-DEA584?style=flat-square&logo=rust&logoColor=white" alt="Rust 2021" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Platform Windows 10/11" />
@@ -17,7 +18,6 @@
   <img src="https://img.shields.io/badge/Binary%20Size-%3C%20500%20KB-brightgreen?style=flat-square" alt="Binary Size < 500 KB" />
   <img src="https://img.shields.io/badge/RAM%20Overhead-%3C%202%20MB-blueviolet?style=flat-square" alt="Memory < 2 MB" />
   <img src="https://img.shields.io/badge/Startup-Zero--UAC%20Elevation-success?style=flat-square" alt="Zero UAC" />
-</p>
 
 ---
 
