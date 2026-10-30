@@ -95,7 +95,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         RegisterClassW(&wc);
 
         let width = 380;
-        let height = 605;
+        let height = 830;
         let screen_w = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CXSCREEN);
         let screen_h = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CYSCREEN);
         let x = (screen_w - width) / 2;
@@ -238,6 +238,98 @@ pub fn show_settings_dialog(_parent: HWND) {
         if !lbl_note2.is_null() && !D_FONT_SUBHEADER.is_null() {
             SendMessageW(lbl_note2, WM_SETFONT, D_FONT_SUBHEADER as WPARAM, 1);
         }
+        // Card 2: ISLC Dual-Condition Standby Controls
+        create_chk(windows_sys::w!("Enable ISLC Standby Trigger (Gaming)"), 496, 220);
+
+        let lbl_islc_s = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("Standby >="),
+            WS_CHILD | WS_VISIBLE,
+            24, 520, 75, 20, hwnd, 223 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_islc_s.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_islc_s, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let edit_islc_standby = CreateWindowExW(
+            0, windows_sys::w!("EDIT"), windows_sys::w!("1024"),
+            WS_CHILD | WS_VISIBLE | windows_sys::Win32::UI::WindowsAndMessaging::WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
+            102, 518, 50, 22, hwnd, 221 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !edit_islc_standby.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(edit_islc_standby, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_islc_s_mb = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("MB"),
+            WS_CHILD | WS_VISIBLE,
+            156, 520, 24, 20, hwnd, 224 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_islc_s_mb.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_islc_s_mb, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_islc_f = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("Free <="),
+            WS_CHILD | WS_VISIBLE,
+            190, 520, 55, 20, hwnd, 225 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_islc_f.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_islc_f, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let edit_islc_free = CreateWindowExW(
+            0, windows_sys::w!("EDIT"), windows_sys::w!("1024"),
+            WS_CHILD | WS_VISIBLE | windows_sys::Win32::UI::WindowsAndMessaging::WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
+            248, 518, 50, 22, hwnd, 222 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !edit_islc_free.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(edit_islc_free, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_islc_f_mb = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("MB"),
+            WS_CHILD | WS_VISIBLE,
+            302, 520, 24, 20, hwnd, 226 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_islc_f_mb.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_islc_f_mb, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        // Card 2: Inactivity / AFK Idle Clean
+        create_chk(windows_sys::w!("Auto-clean on user inactivity / AFK"), 548, 230);
+
+        let lbl_idle = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("Idle timeout:"),
+            WS_CHILD | WS_VISIBLE,
+            24, 572, 85, 20, hwnd, 232 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_idle.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_idle, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let edit_idle = CreateWindowExW(
+            0, windows_sys::w!("EDIT"), windows_sys::w!("300"),
+            WS_CHILD | WS_VISIBLE | windows_sys::Win32::UI::WindowsAndMessaging::WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
+            112, 570, 50, 22, hwnd, 231 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !edit_idle.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(edit_idle, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_idle_sec = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("seconds (Default: 300s)"),
+            WS_CHILD | WS_VISIBLE,
+            168, 572, 160, 20, hwnd, 233 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_idle_sec.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_idle_sec, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        // Card 3: Scheduler Timer Resolution & Kernel Tuning
+        create_radio(windows_sys::w!("Default Timer Resolution (15.6 ms)"), 634, 240);
+        create_radio(windows_sys::w!("1.0 ms Multimedia Latency (1,000 µs)"), 656, 241);
+        create_radio(windows_sys::w!("0.5 ms Competitive Gaming (500 µs)"), 678, 242);
+        create_chk(windows_sys::w!("Enable Kernel Page Combining (de-dup)"), 704, 250);
 
         // Load current config into controls
         let cfg = AppConfig::load();
@@ -265,11 +357,32 @@ pub fn show_settings_dialog(_parent: HWND) {
         let timer_wide: Vec<u16> = timer_str.encode_utf16().collect();
         SetWindowTextW(edit_timer, timer_wide.as_ptr());
 
+        set_checked(hwnd, 220, cfg.triggers.islc_enabled);
+        let islc_s_str = format!("{}\0", cfg.triggers.islc_standby_mb);
+        let islc_s_wide: Vec<u16> = islc_s_str.encode_utf16().collect();
+        SetWindowTextW(edit_islc_standby, islc_s_wide.as_ptr());
+
+        let islc_f_str = format!("{}\0", cfg.triggers.islc_free_mb);
+        let islc_f_wide: Vec<u16> = islc_f_str.encode_utf16().collect();
+        SetWindowTextW(edit_islc_free, islc_f_wide.as_ptr());
+
+        set_checked(hwnd, 230, cfg.triggers.idle_clean_enabled);
+        let idle_str = format!("{}\0", cfg.triggers.idle_seconds);
+        let idle_wide: Vec<u16> = idle_str.encode_utf16().collect();
+        SetWindowTextW(edit_idle, idle_wide.as_ptr());
+
+        match cfg.tuning.timer_mode_enum() {
+            crate::core::timer_res::TimerResolutionMode::HalfMs => set_checked(hwnd, 242, true),
+            crate::core::timer_res::TimerResolutionMode::OneMs => set_checked(hwnd, 241, true),
+            crate::core::timer_res::TimerResolutionMode::Default => set_checked(hwnd, 240, true),
+        }
+        set_checked(hwnd, 250, cfg.tuning.combine_pages_on_clean);
+
         // Flat Minimalist Apply & Close button (BS_OWNERDRAW)
         let btn = CreateWindowExW(
             0, windows_sys::w!("BUTTON"), windows_sys::w!("Apply and Close"),
             WS_CHILD | WS_VISIBLE | BS_OWNERDRAW as u32,
-            12, 515, 340, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            12, 744, 340, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !btn.is_null() && !D_FONT_BOLD.is_null() {
             SendMessageW(btn, WM_SETFONT, D_FONT_BOLD as WPARAM, 1);
@@ -317,10 +430,10 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             let mut hc_rc = RECT { left: 24, top: 120, right: 340, bottom: 132 };
             DrawTextW(hdc, header_color, -1, &mut hc_rc, DT_SINGLELINE);
 
-            // Card 2: Tray Behavior, Startup & Threshold (12, 202, 352, 412)
+            // Card 2: Optimization Triggers (12, 202, 352, 608)
             SelectObject(hdc, D_CARD_BRUSH);
             SelectObject(hdc, D_BORDER_PEN);
-            RoundRect(hdc, 12, 202, 352, 502, 10, 10);
+            RoundRect(hdc, 12, 202, 352, 608, 10, 10);
             // Card 2 Header: TRAY INTERACTION & STARTUP
             SetTextColor(hdc, 0x00747778);
             let header2 = windows_sys::w!("TRAY INTERACTION && STARTUP");
@@ -328,24 +441,46 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             DrawTextW(hdc, header2, -1, &mut h2_rc, DT_SINGLELINE);
 
             // Sub-divider for Hotkey & Startup
-            MoveToEx(hdc, 24, 274, std::ptr::null_mut());
-            LineTo(hdc, 340, 274);
+            MoveToEx(hdc, 24, 268, std::ptr::null_mut());
+            LineTo(hdc, 340, 268);
 
             // Sub-divider for Threshold
-            MoveToEx(hdc, 24, 332, std::ptr::null_mut());
-            LineTo(hdc, 340, 332);
+            MoveToEx(hdc, 24, 324, std::ptr::null_mut());
+            LineTo(hdc, 340, 324);
 
             let header_thresh = windows_sys::w!("RAM AUTO-OPTIMIZATION THRESHOLD");
-            let mut ht_rc = RECT { left: 24, top: 336, right: 340, bottom: 350 };
+            let mut ht_rc = RECT { left: 24, top: 328, right: 340, bottom: 342 };
             DrawTextW(hdc, header_thresh, -1, &mut ht_rc, DT_SINGLELINE);
 
             // Sub-divider for Timer
-            MoveToEx(hdc, 24, 402, std::ptr::null_mut());
-            LineTo(hdc, 340, 402);
+            MoveToEx(hdc, 24, 396, std::ptr::null_mut());
+            LineTo(hdc, 340, 396);
 
             let header_timer = windows_sys::w!("PERIODIC AUTO-OPTIMIZATION TIMER");
-            let mut htm_rc = RECT { left: 24, top: 406, right: 340, bottom: 420 };
+            let mut htm_rc = RECT { left: 24, top: 400, right: 340, bottom: 414 };
             DrawTextW(hdc, header_timer, -1, &mut htm_rc, DT_SINGLELINE);
+
+            // Sub-divider for ISLC
+            MoveToEx(hdc, 24, 480, std::ptr::null_mut());
+            LineTo(hdc, 340, 480);
+
+            let header_islc = windows_sys::w!("INTELLIGENT STANDBY (ISLC)");
+            let mut hislc_rc = RECT { left: 24, top: 484, right: 340, bottom: 498 };
+            DrawTextW(hdc, header_islc, -1, &mut hislc_rc, DT_SINGLELINE);
+
+            // Sub-divider for Idle Clean
+            MoveToEx(hdc, 24, 538, std::ptr::null_mut());
+            LineTo(hdc, 340, 538);
+
+            // Card 3: Scheduler Timer Resolution & Tuning (12, 618, 352, 736)
+            SelectObject(hdc, D_CARD_BRUSH);
+            SelectObject(hdc, D_BORDER_PEN);
+            RoundRect(hdc, 12, 618, 352, 736, 10, 10);
+            SetTextColor(hdc, 0x00747778);
+            let header3 = windows_sys::w!("SCHEDULER TIMER RESOLUTION && KERNEL TUNING");
+            let mut h3_rc = RECT { left: 24, top: 624, right: 340, bottom: 638 };
+            DrawTextW(hdc, header3, -1, &mut h3_rc, DT_SINGLELINE);
+
             SelectObject(hdc, old_brush);
             SelectObject(hdc, old_pen);
             SelectObject(hdc, old_font);
@@ -356,7 +491,7 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
             let ctrl_id = windows_sys::Win32::UI::WindowsAndMessaging::GetDlgCtrlID(lparam as HWND);
-            if ctrl_id == 208 || ctrl_id == 213 {
+            if ctrl_id == 208 || ctrl_id == 213 || ctrl_id == 233 {
                 SetTextColor(hdc, 0x00747778); // Muted helper text
             } else {
                 SetTextColor(hdc, 0x00111111);
@@ -445,6 +580,42 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 if let Ok(val) = text_time.trim().parse::<u32>() {
                     cfg.triggers.timer_seconds = crate::config::clamp_timer_seconds(val);
                 }
+
+                cfg.triggers.islc_enabled = is_checked(hwnd, 220);
+                let mut buf_s = [0u16; 16];
+                let len_s = GetWindowTextW(GetDlgItem(hwnd, 221), buf_s.as_mut_ptr(), buf_s.len() as i32);
+                let text_s = String::from_utf16_lossy(&buf_s[..len_s.max(0) as usize]);
+                if let Ok(val) = text_s.trim().parse::<u64>() {
+                    cfg.triggers.islc_standby_mb = crate::config::clamp_islc_mb(val);
+                }
+
+                let mut buf_f = [0u16; 16];
+                let len_f = GetWindowTextW(GetDlgItem(hwnd, 222), buf_f.as_mut_ptr(), buf_f.len() as i32);
+                let text_f = String::from_utf16_lossy(&buf_f[..len_f.max(0) as usize]);
+                if let Ok(val) = text_f.trim().parse::<u64>() {
+                    cfg.triggers.islc_free_mb = crate::config::clamp_islc_mb(val);
+                }
+
+                cfg.triggers.idle_clean_enabled = is_checked(hwnd, 230);
+                let mut buf_idle = [0u16; 16];
+                let len_idle = GetWindowTextW(GetDlgItem(hwnd, 231), buf_idle.as_mut_ptr(), buf_idle.len() as i32);
+                let text_idle = String::from_utf16_lossy(&buf_idle[..len_idle.max(0) as usize]);
+                if let Ok(val) = text_idle.trim().parse::<u32>() {
+                    cfg.triggers.idle_seconds = crate::config::clamp_idle_seconds(val);
+                }
+
+                if is_checked(hwnd, 242) {
+                    cfg.tuning.timer_resolution_enabled = true;
+                    cfg.tuning.timer_resolution_mode = "0.5ms".to_string();
+                } else if is_checked(hwnd, 241) {
+                    cfg.tuning.timer_resolution_enabled = true;
+                    cfg.tuning.timer_resolution_mode = "1.0ms".to_string();
+                } else {
+                    cfg.tuning.timer_resolution_enabled = false;
+                    cfg.tuning.timer_resolution_mode = "default".to_string();
+                }
+
+                cfg.tuning.combine_pages_on_clean = is_checked(hwnd, 250);
                 let _ = cfg.save();
                 DestroyWindow(hwnd);
             }
