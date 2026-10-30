@@ -33,6 +33,8 @@ By interacting directly with undocumented NT kernel memory manager routines (`Nt
 - **Smart Game Guard:** Automatically detects active fullscreen 3D engines and exempts foreground processes, guaranteeing zero micro-stuttering or 0.1% low drops.
 - **Silent Zero-UAC Elevation:** Integrates with the Windows Task Scheduler (`TASK_RUNLEVEL_HIGHEST`) to launch automatically at login with full administrator privileges without annoying UAC prompts.
 - **Dual-Mode Executable:** A single binary functions as both an interactive Win32 system tray daemon and a scriptable, headless CLI.
+- **Global Optimize Hotkey:** Optional `Ctrl+Alt+M` shortcut purges memory from anywhere, with a tray notification showing the reported RAM change.
+- **Live Process View:** Displays the five largest working sets, refreshes every five seconds, and offers per-process working-set trimming.
 
 ---
 
@@ -236,6 +238,7 @@ If the file does not exist, MemClean automatically generates it with hardened de
 run_on_startup = true           # Auto-starts elevated on user logon via Task Scheduler
 start_minimized = true          # Launches quietly to the system tray notification area
 tray_update_interval_sec = 2    # Frequency in seconds for tray tooltip & icon refresh
+global_hotkey_enabled = true    # Ctrl+Alt+M runs the configured optimization policy
 
 [policy]
 preset = "SmartSafe"            # Presets: "SmartSafe", "Aggressive", or "Custom"
@@ -250,7 +253,7 @@ game_guard_enabled = true       # Auto-detects fullscreen games & shields active
 auto_threshold_enabled = true   # Auto-cleans when RAM utilization exceeds threshold
 threshold_percent = 80          # Memory threshold percentage trigger
 auto_timer_enabled = true       # Periodically executes cleanup on a set interval
-timer_minutes = 15              # Timer interval in minutes
+timer_seconds = 15              # Timer interval in seconds (0 = Continuous / No limit, Range: 1 - 300s)
 
 exclusions = [
     "explorer.exe",

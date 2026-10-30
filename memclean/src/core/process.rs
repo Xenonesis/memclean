@@ -2,7 +2,7 @@ use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, INVALID_HANDLE_V
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
-use windows_sys::Win32::System::ProcessStatus::K32EmptyWorkingSet;
+use windows_sys::Win32::System::ProcessStatus::{K32EmptyWorkingSet, K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS};
 use windows_sys::Win32::System::Threading::{
     OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SET_QUOTA,
 };
@@ -68,4 +68,41 @@ pub fn trim_process_working_set(pid: u32) -> Result<(), String> {
             Err(format!("EmptyWorkingSet({}) failed: {}", pid, GetLastError()))
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessMemUsage {
+    pub pid: u32,
+    pub name: String,
+    pub working_set_mb: u64,
+}
+
+pub fn get_top_memory_processes(limit: usize) -> Vec<ProcessMemUsage> {
+    let procs = enumerate_processes().unwrap_or_default();
+    let mut usage_list = Vec::with_capacity(procs.len());
+
+    for p in procs {
+        unsafe {
+            let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, p.pid);
+            if !handle.is_null() {
+                let mut pmc: PROCESS_MEMORY_COUNTERS = std::mem::zeroed();
+                let cb = std::mem::size_of::<PROCESS_MEMORY_COUNTERS>() as u32;
+                if K32GetProcessMemoryInfo(handle, &mut pmc, cb) != 0 {
+                    let mb = (pmc.WorkingSetSize as u64) / (1024 * 1024);
+                    if mb >= 1 {
+                        usage_list.push(ProcessMemUsage {
+                            pid: p.pid,
+                            name: p.name,
+                            working_set_mb: mb,
+                        });
+                    }
+                }
+                CloseHandle(handle);
+            }
+        }
+    }
+
+    usage_list.sort_by(|a, b| b.working_set_mb.cmp(&a.working_set_mb));
+    usage_list.truncate(limit);
+    usage_list
 }

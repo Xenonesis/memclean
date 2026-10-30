@@ -7,9 +7,9 @@ use windows_sys::Win32::Graphics::Gdi::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetDlgItem, GetMessageW,
-    IsDialogMessageW, LoadIconW, RegisterClassW, SendMessageW, ShowWindow,
-    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_AUTORADIOBUTTON, BS_OWNERDRAW, MSG, SW_SHOW,
-    WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
+    GetWindowTextW, IsDialogMessageW, IsWindow, LoadIconW, RegisterClassW, SendMessageW, SetWindowTextW, ShowWindow,
+    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_AUTORADIOBUTTON, BS_OWNERDRAW, ES_CENTER, ES_NUMBER, MSG, SW_SHOW,
+    WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLOREDIT, WM_CTLCOLORSTATIC, WM_DESTROY,
     WM_DRAWITEM, WM_ERASEBKGND, WM_PAINT, WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
 
@@ -59,8 +59,10 @@ pub fn show_settings_dialog(_parent: HWND) {
     unsafe {
         let class_name = windows_sys::w!("MemCleanSettingsClass");
         let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
-        let app_icon = LoadIconW(hinstance, 1 as _);
-
+        let mut app_icon = LoadIconW(hinstance, 1 as _);
+        if app_icon.is_null() {
+            app_icon = crate::ui::tray::load_embedded_icon(32);
+        }
         D_BG_BRUSH = CreateSolidBrush(0x00FAFBFB); // Warm Bone #FBFBFA
         D_CARD_BRUSH = CreateSolidBrush(0x00FFFFFF); // Pure White #FFFFFF
         D_BORDER_PEN = CreatePen(PS_SOLID as i32, 1, 0x00EAEAEA); // Hairline #EAEAEA
@@ -93,7 +95,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         RegisterClassW(&wc);
 
         let width = 380;
-        let height = 460;
+        let height = 605;
         let screen_w = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CXSCREEN);
         let screen_h = windows_sys::Win32::UI::WindowsAndMessaging::GetSystemMetrics(windows_sys::Win32::UI::WindowsAndMessaging::SM_CYSCREEN);
         let x = (screen_w - width) / 2;
@@ -110,9 +112,17 @@ pub fn show_settings_dialog(_parent: HWND) {
             std::ptr::null_mut(),
             std::ptr::null_mut(),
         );
-        if !app_icon.is_null() {
-            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
+        let small_icon = crate::ui::tray::load_embedded_icon(16);
+        let big_icon = crate::ui::tray::load_embedded_icon(32);
+        if !small_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 0 as _, small_icon as _);
+        } else if !app_icon.is_null() {
             SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
+        }
+        if !big_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, big_icon as _);
+        } else if !app_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
         }
 
         let create_radio = |text: *const u16, cy: i32, id: i32| -> HWND {
@@ -149,9 +159,85 @@ pub fn show_settings_dialog(_parent: HWND) {
         create_radio(windows_sys::w!("Monochrome White (Distraction-Free)"), 156, 105);
 
         // Card 2: Tray Behavior & Startup
-        create_radio(windows_sys::w!("Click Opens / Restores Dashboard"), 228, 201);
-        create_radio(windows_sys::w!("Click Optimizes Memory Instantly"), 252, 202);
-        create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 294, 203);
+        create_radio(windows_sys::w!("Click Opens / Restores Dashboard"), 226, 201);
+        create_radio(windows_sys::w!("Click Optimizes Memory Instantly"), 248, 202);
+        create_chk(windows_sys::w!("Enable Global Hotkey (Ctrl + Alt + M)"), 284, 204);
+        create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 306, 203);
+
+        // Card 2: RAM Threshold Controls
+        let lbl_thresh = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("Auto-optimize when RAM exceeds:"),
+            WS_CHILD | WS_VISIBLE,
+            24, 355, 226, 20, hwnd, 206 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_thresh.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_thresh, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let edit_thresh = CreateWindowExW(
+            0, windows_sys::w!("EDIT"), windows_sys::w!("80"),
+            WS_CHILD | WS_VISIBLE | windows_sys::Win32::UI::WindowsAndMessaging::WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
+            254, 352, 44, 22, hwnd, 205 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !edit_thresh.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(edit_thresh, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_pct = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("%"),
+            WS_CHILD | WS_VISIBLE,
+            304, 355, 20, 20, hwnd, 207 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_pct.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_pct, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_note = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("(Range: 10% - 95%, Default: 80%)"),
+            WS_CHILD | WS_VISIBLE,
+            24, 380, 316, 16, hwnd, 208 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_note.is_null() && !D_FONT_SUBHEADER.is_null() {
+            SendMessageW(lbl_note, WM_SETFONT, D_FONT_SUBHEADER as WPARAM, 1);
+        }
+        // Card 2: Periodic Timer Controls
+        create_chk(windows_sys::w!("Enable periodic auto-clean timer"), 420, 209);
+
+        let lbl_timer = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("Optimize interval:"),
+            WS_CHILD | WS_VISIBLE,
+            24, 448, 136, 20, hwnd, 210 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_timer.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_timer, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let edit_timer = CreateWindowExW(
+            0, windows_sys::w!("EDIT"), windows_sys::w!("15"),
+            WS_CHILD | WS_VISIBLE | windows_sys::Win32::UI::WindowsAndMessaging::WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
+            164, 445, 50, 22, hwnd, 211 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !edit_timer.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(edit_timer, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_secs = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("seconds"),
+            WS_CHILD | WS_VISIBLE,
+            220, 448, 70, 20, hwnd, 212 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_secs.is_null() && !D_FONT_UI.is_null() {
+            SendMessageW(lbl_secs, WM_SETFONT, D_FONT_UI as WPARAM, 1);
+        }
+
+        let lbl_note2 = CreateWindowExW(
+            0, windows_sys::w!("STATIC"), windows_sys::w!("(0 = Continuous / No limit, Range: 1 - 300s)"),
+            WS_CHILD | WS_VISIBLE,
+            24, 472, 316, 16, hwnd, 213 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+        );
+        if !lbl_note2.is_null() && !D_FONT_SUBHEADER.is_null() {
+            SendMessageW(lbl_note2, WM_SETFONT, D_FONT_SUBHEADER as WPARAM, 1);
+        }
 
         // Load current config into controls
         let cfg = AppConfig::load();
@@ -169,21 +255,29 @@ pub fn show_settings_dialog(_parent: HWND) {
             TrayClickAction::QuickOptimize => set_checked(hwnd, 202, true),
         }
         set_checked(hwnd, 203, cfg.general.start_minimized);
+        set_checked(hwnd, 204, cfg.general.global_hotkey_enabled);
+        let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
+        let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
+        SetWindowTextW(edit_thresh, thresh_wide.as_ptr());
+
+        set_checked(hwnd, 209, cfg.triggers.auto_timer_enabled);
+        let timer_str = format!("{}\0", cfg.triggers.timer_seconds);
+        let timer_wide: Vec<u16> = timer_str.encode_utf16().collect();
+        SetWindowTextW(edit_timer, timer_wide.as_ptr());
 
         // Flat Minimalist Apply & Close button (BS_OWNERDRAW)
         let btn = CreateWindowExW(
             0, windows_sys::w!("BUTTON"), windows_sys::w!("Apply and Close"),
             WS_CHILD | WS_VISIBLE | BS_OWNERDRAW as u32,
-            12, 385, 340, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            12, 515, 340, 36, hwnd, 301 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !btn.is_null() && !D_FONT_BOLD.is_null() {
             SendMessageW(btn, WM_SETFONT, D_FONT_BOLD as WPARAM, 1);
         }
-
         ShowWindow(hwnd, SW_SHOW);
 
         let mut msg: MSG = std::mem::zeroed();
-        while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
+        while IsWindow(hwnd) != 0 && GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
             if IsDialogMessageW(hwnd, &msg) == 0 {
                 DispatchMessageW(&msg);
             }
@@ -223,21 +317,35 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             let mut hc_rc = RECT { left: 24, top: 120, right: 340, bottom: 132 };
             DrawTextW(hdc, header_color, -1, &mut hc_rc, DT_SINGLELINE);
 
-            // Card 2: Tray Behavior & Startup (12, 202, 352, 372)
+            // Card 2: Tray Behavior, Startup & Threshold (12, 202, 352, 412)
             SelectObject(hdc, D_CARD_BRUSH);
             SelectObject(hdc, D_BORDER_PEN);
-            RoundRect(hdc, 12, 202, 352, 372, 10, 10);
-
+            RoundRect(hdc, 12, 202, 352, 502, 10, 10);
             // Card 2 Header: TRAY INTERACTION & STARTUP
             SetTextColor(hdc, 0x00747778);
             let header2 = windows_sys::w!("TRAY INTERACTION && STARTUP");
             let mut h2_rc = RECT { left: 24, top: 210, right: 340, bottom: 224 };
             DrawTextW(hdc, header2, -1, &mut h2_rc, DT_SINGLELINE);
 
-            // Sub-divider
-            MoveToEx(hdc, 24, 280, std::ptr::null_mut());
-            LineTo(hdc, 340, 280);
+            // Sub-divider for Hotkey & Startup
+            MoveToEx(hdc, 24, 274, std::ptr::null_mut());
+            LineTo(hdc, 340, 274);
 
+            // Sub-divider for Threshold
+            MoveToEx(hdc, 24, 332, std::ptr::null_mut());
+            LineTo(hdc, 340, 332);
+
+            let header_thresh = windows_sys::w!("RAM AUTO-OPTIMIZATION THRESHOLD");
+            let mut ht_rc = RECT { left: 24, top: 336, right: 340, bottom: 350 };
+            DrawTextW(hdc, header_thresh, -1, &mut ht_rc, DT_SINGLELINE);
+
+            // Sub-divider for Timer
+            MoveToEx(hdc, 24, 402, std::ptr::null_mut());
+            LineTo(hdc, 340, 402);
+
+            let header_timer = windows_sys::w!("PERIODIC AUTO-OPTIMIZATION TIMER");
+            let mut htm_rc = RECT { left: 24, top: 406, right: 340, bottom: 420 };
+            DrawTextW(hdc, header_timer, -1, &mut htm_rc, DT_SINGLELINE);
             SelectObject(hdc, old_brush);
             SelectObject(hdc, old_pen);
             SelectObject(hdc, old_font);
@@ -247,7 +355,12 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
         WM_CTLCOLORSTATIC => {
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
             SetBkMode(hdc, TRANSPARENT as i32);
-            SetTextColor(hdc, 0x00111111);
+            let ctrl_id = windows_sys::Win32::UI::WindowsAndMessaging::GetDlgCtrlID(lparam as HWND);
+            if ctrl_id == 208 || ctrl_id == 213 {
+                SetTextColor(hdc, 0x00747778); // Muted helper text
+            } else {
+                SetTextColor(hdc, 0x00111111);
+            }
             D_CARD_BRUSH as LRESULT // Controls match white card surface
         }
         WM_CTLCOLORBTN => {
@@ -258,6 +371,12 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
         }
         WM_CTLCOLORDLG => {
             D_BG_BRUSH as LRESULT
+        }
+        WM_CTLCOLOREDIT => {
+            let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
+            SetBkMode(hdc, TRANSPARENT as i32);
+            SetTextColor(hdc, 0x00111111);
+            D_CARD_BRUSH as LRESULT
         }
         WM_DRAWITEM => {
             let dis = &*(lparam as *const DRAWITEMSTRUCT);
@@ -311,7 +430,21 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 }
 
                 cfg.general.start_minimized = is_checked(hwnd, 203);
+                cfg.general.global_hotkey_enabled = is_checked(hwnd, 204);
 
+                let mut buf = [0u16; 16];
+                let len = GetWindowTextW(GetDlgItem(hwnd, 205), buf.as_mut_ptr(), buf.len() as i32);
+                let text = String::from_utf16_lossy(&buf[..len.max(0) as usize]);
+                if let Ok(val) = text.trim().parse::<u32>() {
+                    cfg.triggers.threshold_percent = crate::config::clamp_threshold_percent(val);
+                }
+                cfg.triggers.auto_timer_enabled = is_checked(hwnd, 209);
+                let mut buf_time = [0u16; 16];
+                let len_time = GetWindowTextW(GetDlgItem(hwnd, 211), buf_time.as_mut_ptr(), buf_time.len() as i32);
+                let text_time = String::from_utf16_lossy(&buf_time[..len_time.max(0) as usize]);
+                if let Ok(val) = text_time.trim().parse::<u32>() {
+                    cfg.triggers.timer_seconds = crate::config::clamp_timer_seconds(val);
+                }
                 let _ = cfg.save();
                 DestroyWindow(hwnd);
             }

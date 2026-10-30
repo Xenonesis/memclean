@@ -1,5 +1,6 @@
 use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
 use crate::core::memory;
+use crate::core::process::get_top_memory_processes;
 use crate::engine::cleaner;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
@@ -15,19 +16,81 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
-    DispatchMessageW, FindWindowW, GetClientRect, GetCursorPos, GetDlgItem, GetMessageW,
+    CreateIconFromResourceEx, CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
+    DispatchMessageW, DrawIconEx, FindWindowW, GetClientRect, GetCursorPos, GetDlgItem, GetMessageW,
     IsWindowVisible, LoadIconW, PostQuitMessage, RegisterClassW, SendMessageW,
     SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
     BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW,
-    GetDlgCtrlID, ICONINFO, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
+    DI_NORMAL, GetDlgCtrlID, ICONINFO, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
     SW_HIDE, SW_RESTORE, SW_SHOW, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
     WM_CLOSE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
-    WM_DRAWITEM, WM_ERASEBKGND, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP,
+    WM_DRAWITEM, WM_ERASEBKGND, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP,
     WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+use windows_sys::Win32::UI::WindowsAndMessaging::HICON;
 
+const EMBEDDED_ICO: &[u8] = include_bytes!("../../memclean.ico");
+
+pub fn load_embedded_icon(desired_size: u32) -> HICON {
+    unsafe {
+        if EMBEDDED_ICO.len() < 6 {
+            return std::ptr::null_mut();
+        }
+        let count = u16::from_le_bytes([EMBEDDED_ICO[4], EMBEDDED_ICO[5]]) as usize;
+        let mut best_offset = 0usize;
+        let mut best_size = 0usize;
+        let mut best_dim = 0u32;
+        let mut best_diff = i32::MAX;
+
+        for i in 0..count {
+            let entry_off = 6 + i * 16;
+            if entry_off + 16 > EMBEDDED_ICO.len() {
+                break;
+            }
+            let raw_w = EMBEDDED_ICO[entry_off];
+            let dim = if raw_w == 0 { 256 } else { raw_w as u32 };
+            let size = u32::from_le_bytes([
+                EMBEDDED_ICO[entry_off + 8],
+                EMBEDDED_ICO[entry_off + 9],
+                EMBEDDED_ICO[entry_off + 10],
+                EMBEDDED_ICO[entry_off + 11],
+            ]) as usize;
+            let offset = u32::from_le_bytes([
+                EMBEDDED_ICO[entry_off + 12],
+                EMBEDDED_ICO[entry_off + 13],
+                EMBEDDED_ICO[entry_off + 14],
+                EMBEDDED_ICO[entry_off + 15],
+            ]) as usize;
+
+            let diff = (dim as i32 - desired_size as i32).abs();
+            if diff < best_diff {
+                best_diff = diff;
+                best_dim = dim;
+                best_offset = offset;
+                best_size = size;
+            }
+        }
+
+        if best_size > 0 && best_offset + best_size <= EMBEDDED_ICO.len() {
+            let res_bytes = &EMBEDDED_ICO[best_offset..best_offset + best_size];
+            let hicon = CreateIconFromResourceEx(
+                res_bytes.as_ptr(),
+                best_size as u32,
+                1,
+                0x00030000,
+                best_dim as i32,
+                best_dim as i32,
+                0,
+            );
+            if !hicon.is_null() {
+                return hicon;
+            }
+        }
+        std::ptr::null_mut()
+    }
+}
 #[repr(C)]
 #[allow(non_snake_case, dead_code)]
 struct DRAWITEMSTRUCT {
@@ -53,6 +116,8 @@ static mut G_FONT_SUBHEADER: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr
 static mut G_FONT_STATS: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut G_USED_PERCENT: u32 = 0;
 const WM_TRAYICON: u32 = WM_USER + 1;
+const HOTKEY_ID: i32 = 2001;
+const PROCESS_TIMER_ID: usize = 1002;
 const TIMER_ID: usize = 1001;
 
 pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
@@ -66,6 +131,10 @@ pub fn create_percent_icon_with_config(
 ) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
     unsafe {
         if tray_cfg.style == TrayStyle::Logo {
+            let logo_icon = load_embedded_icon(16);
+            if !logo_icon.is_null() {
+                return logo_icon;
+            }
             let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
             let app_icon = LoadIconW(hinstance, 1 as _);
             if !app_icon.is_null() {
@@ -213,12 +282,37 @@ unsafe fn update_stats_display(hwnd: HWND) {
     }
 }
 
+unsafe fn update_top_processes(hwnd: HWND) {
+    let top = get_top_memory_processes(5);
+    if let Ok(mut cached) = TOP_PROCESSES.lock() {
+        *cached = top.clone();
+    }
+
+    for index in 0..5 {
+        let label_id = 105 + index as i32;
+        let button_id = 601 + index as i32;
+        if let Some(process) = top.get(index) {
+            let name = process.name.chars().take(28).collect::<String>();
+            set_text(hwnd, label_id, &format!("{}  {} MB", name, process.working_set_mb));
+            ShowWindow(GetDlgItem(hwnd, button_id), SW_SHOW);
+        } else {
+            set_text(hwnd, label_id, "");
+            ShowWindow(GetDlgItem(hwnd, button_id), SW_HIDE);
+        }
+    }
+}
+unsafe fn sync_global_hotkey(hwnd: HWND, enabled: bool) -> bool {
+    UnregisterHotKey(hwnd, HOTKEY_ID);
+    !enabled || RegisterHotKey(hwnd, HOTKEY_ID, MOD_ALT | MOD_CONTROL | MOD_NOREPEAT, 0x4D) != 0
+}
+
 use std::sync::Mutex;
 use std::time::Instant;
 
 static CACHED_CONFIG: Mutex<Option<AppConfig>> = Mutex::new(None);
 static LAST_AUTO_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
 static LAST_PERIODIC_CLEAN: Mutex<Option<Instant>> = Mutex::new(None);
+static TOP_PROCESSES: Mutex<Vec<crate::core::process::ProcessMemUsage>> = Mutex::new(Vec::new());
 
 fn get_config() -> AppConfig {
     let mut lock = CACHED_CONFIG.lock().unwrap();
@@ -248,8 +342,12 @@ unsafe fn load_config_to_controls(hwnd: HWND) {
     set_checked(hwnd, 305, config.policy.trim_working_sets);
     set_checked(hwnd, 306, config.policy.game_guard_enabled);
     set_checked(hwnd, 307, config.triggers.auto_threshold_enabled);
+    let thresh_label = format!("Auto-optimize when RAM exceeds {}%\0", config.triggers.threshold_percent);
+    let thresh_wide: Vec<u16> = thresh_label.encode_utf16().collect();
+    let ctrl307 = GetDlgItem(hwnd, 307);
+    SetWindowTextW(ctrl307, thresh_wide.as_ptr());
+    windows_sys::Win32::Graphics::Gdi::InvalidateRect(ctrl307, std::ptr::null(), 1);
 }
-
 unsafe fn save_config_from_controls(hwnd: HWND) {
     let purge_standby = is_checked(hwnd, 301);
     let purge_low_standby = is_checked(hwnd, 302);
@@ -307,7 +405,10 @@ pub fn run_application(start_minimized: bool) {
             return;
         }
         let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
-        let app_icon = LoadIconW(hinstance, 1 as _);
+        let mut app_icon = LoadIconW(hinstance, 1 as _);
+        if app_icon.is_null() {
+            app_icon = load_embedded_icon(32);
+        }
 
         G_BG_BRUSH = CreateSolidBrush(0x00FAFBFB); // Warm Bone #FBFBFA
         G_CARD_BRUSH = CreateSolidBrush(0x00FFFFFF); // Pure White #FFFFFF
@@ -345,7 +446,7 @@ pub fn run_application(start_minimized: bool) {
         RegisterClassW(&wc);
 
         let width = 400;
-        let height = 460;
+        let height = 560;
 
         let mut work_area: RECT = std::mem::zeroed();
         SystemParametersInfoW(
@@ -373,9 +474,17 @@ pub fn run_application(start_minimized: bool) {
             return;
         }
 
-        if !app_icon.is_null() {
-            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
+        let small_icon = load_embedded_icon(16);
+        let big_icon = load_embedded_icon(32);
+        if !small_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 0 as _, small_icon as _);
+        } else if !app_icon.is_null() {
             SendMessageW(hwnd, WM_SETICON, 0 as _, app_icon as _);
+        }
+        if !big_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, big_icon as _);
+        } else if !app_icon.is_null() {
+            SendMessageW(hwnd, WM_SETICON, 1 as _, app_icon as _);
         }
 
         let create_ctrl = |class: *const u16, text: *const u16, style: u32, cx: i32, cy: i32, cw: i32, ch: i32, id: i32, font: windows_sys::Win32::Graphics::Gdi::HFONT| -> HWND {
@@ -399,21 +508,35 @@ pub fn run_application(start_minimized: bool) {
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Optimize Memory Now"), BS_OWNERDRAW as u32, 12, 134, 176, 32, 201, G_FONT_BOLD);
         create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby"), BS_OWNERDRAW as u32, 196, 134, 176, 32, 202, G_FONT_BOLD);
 
-        // Card 2: Optimization Pipeline Checkboxes (inside white card, seamless background)
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby Page List"), BS_AUTOCHECKBOX as u32, 22, 204, 340, 20, 301, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Low-Priority Standby Purge"), BS_AUTOCHECKBOX as u32, 22, 225, 340, 20, 302, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Flush Modified Page List"), BS_AUTOCHECKBOX as u32, 22, 246, 340, 20, 303, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim System File Cache"), BS_AUTOCHECKBOX as u32, 22, 267, 340, 20, 304, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim Background Working Sets"), BS_AUTOCHECKBOX as u32, 22, 288, 340, 20, 305, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Enable Game && Foreground Shield"), BS_AUTOCHECKBOX as u32, 22, 309, 340, 20, 306, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Auto-optimize when RAM exceeds 80%"), BS_AUTOCHECKBOX as u32, 22, 330, 340, 20, 307, G_FONT_UI);
+        // Top 5 RAM Consumers card rows and per-process trim actions
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("TOP 5 RAM CONSUMERS"), 0, 22, 178, 200, 14, 104, G_FONT_SUBHEADER);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!("Loading..."), 0, 22, 202, 286, 16, 105, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 201, 44, 18, 601, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 216, 286, 16, 106, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 215, 44, 18, 602, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 230, 286, 16, 107, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 229, 44, 18, 603, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 244, 286, 16, 108, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 243, 44, 18, 604, G_FONT_UI);
+        create_ctrl(windows_sys::w!("STATIC"), windows_sys::w!(""), 0, 22, 258, 286, 16, 109, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim"), BS_OWNERDRAW as u32, 318, 257, 44, 18, 605, G_FONT_UI);
 
-        // Footer action buttons (Flat Minimalist Owner-Drawn)
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Settings..."), BS_OWNERDRAW as u32, 12, 374, 114, 30, 401, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Minimize to Tray"), BS_OWNERDRAW as u32, 132, 374, 126, 30, 402, G_FONT_UI);
-        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Exit"), BS_OWNERDRAW as u32, 264, 374, 108, 30, 403, G_FONT_UI);
+        // Card 2: Optimization Pipeline Checkboxes
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Purge Standby Page List"), BS_AUTOCHECKBOX as u32, 22, 322, 340, 20, 301, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Low-Priority Standby Purge"), BS_AUTOCHECKBOX as u32, 22, 343, 340, 20, 302, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Flush Modified Page List"), BS_AUTOCHECKBOX as u32, 22, 364, 340, 20, 303, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim System File Cache"), BS_AUTOCHECKBOX as u32, 22, 385, 340, 20, 304, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Trim Background Working Sets"), BS_AUTOCHECKBOX as u32, 22, 406, 340, 20, 305, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Enable Game && Foreground Shield"), BS_AUTOCHECKBOX as u32, 22, 427, 340, 20, 306, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Auto-optimize when RAM exceeds 80%"), BS_AUTOCHECKBOX as u32, 22, 448, 340, 20, 307, G_FONT_UI);
+
+        // Footer action buttons
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Settings..."), BS_OWNERDRAW as u32, 12, 484, 114, 30, 401, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Minimize to Tray"), BS_OWNERDRAW as u32, 132, 484, 126, 30, 402, G_FONT_UI);
+        create_ctrl(windows_sys::w!("BUTTON"), windows_sys::w!("Exit"), BS_OWNERDRAW as u32, 264, 484, 108, 30, 403, G_FONT_UI);
         load_config_to_controls(hwnd);
         update_stats_display(hwnd);
+        update_top_processes(hwnd);
 
         // Setup Tray Icon
         let stats = memory::get_memory_stats().unwrap_or(memory::MemoryStats {
@@ -455,8 +578,13 @@ pub fn run_application(start_minimized: bool) {
             SetForegroundWindow(hwnd);
         }
 
-        // 1-second update timer
         SetTimer(hwnd, TIMER_ID, 1000, None);
+        SetTimer(hwnd, PROCESS_TIMER_ID, 5000, None);
+
+        // Register global hotkey Ctrl+Alt+M if enabled.
+        if !sync_global_hotkey(hwnd, get_config().general.global_hotkey_enabled) {
+            set_text(hwnd, 103, "Status: Ctrl+Alt+M is already in use.");
+        }
 
         let mut msg: MSG = std::mem::zeroed();
         while GetMessageW(&mut msg, std::ptr::null_mut(), 0, 0) > 0 {
@@ -500,7 +628,25 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             }
             0
         }
+        WM_HOTKEY => {
+            if wparam as i32 == HOTKEY_ID {
+                let cfg = get_config();
+                let before = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
+                let _ = cleaner::perform_clean(&cfg, false);
+                let after = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
+                let freed = if after > before { after - before } else { 0 };
+                let status = format!("Status: Hotkey optimized; freed {} MB.", freed);
+                set_text(hwnd, 103, &status);
+                show_tray_notification(hwnd, "MemClean Hotkey", &format!("Freed {} MB RAM.", freed));
+                update_stats_display(hwnd);
+            }
+            0
+        }
         WM_TIMER => {
+            if wparam as usize == PROCESS_TIMER_ID {
+                update_top_processes(hwnd);
+                return 0;
+            }
             let config = get_config();
             if let Ok(stats) = memory::get_memory_stats() {
                 let now = Instant::now();
@@ -522,12 +668,15 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     set_text(hwnd, 103, "Status: Auto-cleaned (exceeded threshold).");
                 }
 
-                // 2. Scheduled timer-based auto-clean (e.g. every 15 minutes)
-                if config.triggers.auto_timer_enabled && config.triggers.timer_minutes > 0 {
-                    let interval_secs = (config.triggers.timer_minutes as u64) * 60;
-                    let should_timer_clean = {
+                // 2. Scheduled timer-based auto-clean (continuous or periodic interval)
+                if config.triggers.auto_timer_enabled {
+                    let sec = config.triggers.timer_seconds;
+                    let should_timer_clean = if sec == 0 {
+                        // 0 = Continuous mode: runs every 1-second tick without time limit
+                        true
+                    } else {
                         let lock = LAST_PERIODIC_CLEAN.lock().unwrap();
-                        lock.map_or(true, |last| now.duration_since(last).as_secs() >= interval_secs)
+                        lock.map_or(true, |last| now.duration_since(last).as_secs() >= (sec as u64))
                     };
 
                     if should_timer_clean {
@@ -535,7 +684,13 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         if let Ok(mut lock) = LAST_PERIODIC_CLEAN.lock() {
                             *lock = Some(now);
                         }
-                        set_text(hwnd, 103, "Status: Auto-cleaned (scheduled timer).");
+                        if sec == 0 {
+                            set_text(hwnd, 103, "Status: Auto-cleaned (continuous mode).");
+                        } else {
+                            let msg = format!("Status: Auto-cleaned (timer: {}s).\0", sec);
+                            let wide: Vec<u16> = msg.encode_utf16().collect();
+                            SetWindowTextW(GetDlgItem(hwnd, 103), wide.as_ptr());
+                        }
                     }
                 }
 
@@ -591,6 +746,12 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         *lock = Some(AppConfig::load());
                     }
                     load_config_to_controls(hwnd);
+                    let hotkey_enabled = get_config().general.global_hotkey_enabled;
+                    if !sync_global_hotkey(hwnd, hotkey_enabled) {
+                        set_text(hwnd, 103, "Status: Ctrl+Alt+M is already in use.");
+                    } else {
+                        set_text(hwnd, 103, "Status: Settings saved successfully.");
+                    }
                     update_stats_display(hwnd);
                 }
                 402 => { // Minimize to Tray
@@ -607,6 +768,18 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let _ = crate::core::ntdll::empty_system_working_sets();
                     set_text(hwnd, 103, "Status: Working sets emptied.");
                     update_stats_display(hwnd);
+                }
+                601..=605 => {
+                    let index = (id - 601) as usize;
+                    let pid = TOP_PROCESSES.lock().ok()
+                        .and_then(|processes| processes.get(index).map(|process| process.pid));
+                    if let Some(pid) = pid {
+                        match crate::core::process::trim_process_working_set(pid) {
+                            Ok(()) => set_text(hwnd, 103, "Status: Process working set trimmed."),
+                            Err(_) => set_text(hwnd, 103, "Status: Process could not be trimmed."),
+                        }
+                        update_top_processes(hwnd);
+                    }
                 }
                 _ => {}
             }
@@ -630,8 +803,12 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             SetBkMode(hdc, TRANSPARENT as i32);
             SetTextColor(hdc, 0x00747778); // Muted gray #787774
             let old_font = SelectObject(hdc, G_FONT_SUBHEADER);
-            let header1 = windows_sys::w!("PHYSICAL RAM TELEMETRY");
-            let mut h1_rc = RECT { left: 22, top: 18, right: 362, bottom: 32 };
+            let logo_icon = load_embedded_icon(24);
+            if !logo_icon.is_null() {
+                DrawIconEx(hdc, 22, 14, logo_icon, 20, 20, 0, std::ptr::null_mut(), DI_NORMAL);
+            }
+            let header1 = windows_sys::w!("MEMCLEAN — PHYSICAL RAM TELEMETRY");
+            let mut h1_rc = RECT { left: 47, top: 17, right: 362, bottom: 32 };
             DrawTextW(hdc, header1, -1, &mut h1_rc, DT_SINGLELINE);
 
             // Progress bar track at (22, 36, 362, 42)
@@ -658,22 +835,32 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 DeleteObject(bar_brush);
             }
 
-            // Card 2: Optimization Pipeline (12, 174, 372, 364)
+            // Top consumers card
             SelectObject(hdc, G_CARD_BRUSH);
             SelectObject(hdc, G_BORDER_PEN);
-            RoundRect(hdc, 12, 174, 372, 364, 10, 10);
+            RoundRect(hdc, 12, 170, 372, 280, 10, 10);
+            SetBkMode(hdc, TRANSPARENT as i32);
+            SelectObject(hdc, G_FONT_SUBHEADER);
+            SetTextColor(hdc, 0x00747778);
+            let top_header = windows_sys::w!("TOP 5 RAM CONSUMERS");
+            let mut top_header_rc = RECT { left: 22, top: 178, right: 362, bottom: 192 };
+            DrawTextW(hdc, top_header, -1, &mut top_header_rc, DT_SINGLELINE);
+            SelectObject(hdc, G_BORDER_PEN);
+            MoveToEx(hdc, 22, 196, std::ptr::null_mut());
+            LineTo(hdc, 362, 196);
 
-            // Card 2 Header
+            // Optimization pipeline card
+            SelectObject(hdc, G_CARD_BRUSH);
+            SelectObject(hdc, G_BORDER_PEN);
+            RoundRect(hdc, 12, 288, 372, 472, 10, 10);
             SelectObject(hdc, G_FONT_SUBHEADER);
             SetTextColor(hdc, 0x00747778);
             let header2 = windows_sys::w!("OPTIMIZATION PIPELINE");
-            let mut h2_rc = RECT { left: 22, top: 182, right: 362, bottom: 196 };
+            let mut h2_rc = RECT { left: 22, top: 296, right: 362, bottom: 310 };
             DrawTextW(hdc, header2, -1, &mut h2_rc, DT_SINGLELINE);
-
-            // Hairline divider
             SelectObject(hdc, G_BORDER_PEN);
-            MoveToEx(hdc, 22, 198, std::ptr::null_mut());
-            LineTo(hdc, 362, 198);
+            MoveToEx(hdc, 22, 316, std::ptr::null_mut());
+            LineTo(hdc, 362, 316);
             // Restore DC
             SelectObject(hdc, old_brush);
             SelectObject(hdc, old_pen);
@@ -749,7 +936,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 DrawTextW(dis.hDC, text, -1, &mut rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis.hDC, old_font);
                 1
-            } else if dis.CtlID >= 401 && dis.CtlID <= 403 {
+            } else if (401..=403).contains(&dis.CtlID) || (601..=605).contains(&dis.CtlID) {
                 // Footer buttons: White background, hairline #EAEAEA border, off-black text
                 let is_selected = (dis.itemState & ODS_SELECTED) != 0;
                 let bg_color = if is_selected { 0x00EFEFEF } else { 0x00FFFFFF };
@@ -770,6 +957,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     401 => windows_sys::w!("Settings..."),
                     402 => windows_sys::w!("Minimize to Tray"),
                     403 => windows_sys::w!("Exit"),
+                    601..=605 => windows_sys::w!("Trim"),
                     _ => windows_sys::w!(""),
                 };
                 let mut rc = dis.rcItem;
@@ -795,6 +983,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             0
         }
         WM_DESTROY => {
+            UnregisterHotKey(hwnd, HOTKEY_ID);
             if !G_BG_BRUSH.is_null() {
                 DeleteObject(G_BG_BRUSH);
                 G_BG_BRUSH = std::ptr::null_mut();
@@ -880,5 +1069,20 @@ mod tests {
         };
         let icon_mono = create_percent_icon_with_config(72, &mono_cfg);
         assert!(!icon_mono.is_null());
+    }
+
+    #[test]
+    fn test_load_embedded_icon_frames() {
+        let icon16 = load_embedded_icon(16);
+        assert!(!icon16.is_null());
+        let icon32 = load_embedded_icon(32);
+        assert!(!icon32.is_null());
+        let icon48 = load_embedded_icon(48);
+        assert!(!icon48.is_null());
+        unsafe {
+            DestroyIcon(icon16);
+            DestroyIcon(icon32);
+            DestroyIcon(icon48);
+        }
     }
 }
