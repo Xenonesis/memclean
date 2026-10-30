@@ -3,6 +3,7 @@ name: Deploy MemClean Website to GitHub Pages
 on:
   push:
     branches:
+      - master
       - main
     paths:
       - 'website/**'

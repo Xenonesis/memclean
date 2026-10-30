@@ -1,7 +1,7 @@
 # MemClean
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Xenonesis/memclean/main/docs/assets/banner.png" alt="MemClean Banner" width="800" onerror="this.style.display='none'"/>
+  <img src="https://raw.githubusercontent.com/Xenonesis/memclean/master/docs/assets/banner.png" alt="MemClean Banner" width="800" onerror="this.style.display='none'"/>
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
   <a href="https://github.com/Xenonesis/memclean/releases"><img src="https://img.shields.io/github/v/release/Xenonesis/memclean?style=flat-square&color=blue" alt="GitHub Release" /></a>
   <img src="https://img.shields.io/badge/Rust-2021-DEA584?style=flat-square&logo=rust&logoColor=white" alt="Rust 2021" />
   <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Platform Windows 10/11" />
-  <a href="https://github.com/Xenonesis/memclean/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" /></a>
+  <a href="https://github.com/Xenonesis/memclean/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License MIT" /></a>
   <img src="https://img.shields.io/badge/Binary%20Size-%3C%20500%20KB-brightgreen?style=flat-square" alt="Binary Size < 500 KB" />
   <img src="https://img.shields.io/badge/RAM%20Overhead-%3C%202%20MB-blueviolet?style=flat-square" alt="Memory < 2 MB" />
   <img src="https://img.shields.io/badge/Startup-Zero--UAC%20Elevation-success?style=flat-square" alt="Zero UAC" />
@@ -341,7 +341,7 @@ Contributions from the systems engineering, gaming, and Rust communities are wel
 
 ## License
 
-This project is licensed under the **MIT License** &mdash; see the [LICENSE](https://github.com/Xenonesis/memclean/blob/main/LICENSE) file for details.
+This project is licensed under the **MIT License** &mdash; see the [LICENSE](https://github.com/Xenonesis/memclean/blob/master/LICENSE) file for details.
 
 ```text
 MIT License

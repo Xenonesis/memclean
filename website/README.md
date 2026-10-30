@@ -158,7 +158,7 @@ Right-click `website/index.html` in VS Code and select **"Open with Live Server"
 The repository includes a dedicated, automated GitHub Actions workflow at [`.github/workflows/deploy-site.yml`](../.github/workflows/deploy-site.yml).
 
 ### Workflow Details
-- **Trigger:** Triggers on any `push` to the `main` branch that modifies files in `website/**` or the workflow file itself, or via manual **Run workflow** (`workflow_dispatch`).
+- **Trigger:** Triggers on any `push` to the `master` or `main` branch that modifies files in `website/**` or the workflow file itself, or via manual **Run workflow** (`workflow_dispatch`).
 - **Permissions:**
   - `contents: read`
   - `pages: write`
@@ -175,7 +175,7 @@ To enable Pages for your repository fork or origin:
 2. Go to **Settings** > **Pages**.
 3. Under **Build and deployment**:
    - **Source**: Select **GitHub Actions** (do *not* select "Deploy from a branch").
-4. Push a commit to `main` or trigger the workflow manually from the **Actions** tab.
+4. Push a commit to `master` (or trigger the workflow manually from the **Actions** tab).
 5. The site will be published to `https://<username>.github.io/<repository>/`.
 
 ---
