@@ -398,9 +398,9 @@
                   <path d="m9 12 2 2 4-4"></path>
                 </svg>
               </div>
-              <h3 class="bento-title">0.5 ms Scheduler Timer &amp; Game Shield</h3>
+              <h3 class="bento-title">0.5 ms Scheduler Timer &amp; 100% Core Unpark</h3>
               <p class="bento-desc">
-                Locks Windows global timer resolution to 0.500 ms (2,000 Hz) via <code style="color: var(--pastel-blue-text);">NtSetTimerResolution</code> for competitive esports latency and smooth frame pacing, while shielding active DirectX/Vulkan game working sets from eviction.
+                Locks Windows global timer resolution to 0.500 ms (2,000 Hz) via <code style="color: var(--pastel-blue-text);">NtSetTimerResolution</code> and unparks 100% of CPU cores for zero-stutter burst performance and smooth frame pacing.
               </p>
             </div>
             <div class="bento-meta">
@@ -425,6 +425,110 @@
             <div class="bento-meta">
               <span>Pure Win32 GDI</span>
               <span class="bento-meta-badge">Sub-ms Rendering</span>
+            </div>
+          </div>
+          <!-- Bento: Intel/AMD Hybrid Core Allocator -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                  <rect x="9" y="9" width="6" height="6"></rect>
+                  <line x1="9" y1="1" x2="9" y2="4"></line>
+                  <line x1="15" y1="1" x2="15" y2="4"></line>
+                  <line x1="9" y1="20" x2="9" y2="23"></line>
+                  <line x1="15" y1="20" x2="15" y2="23"></line>
+                </svg>
+              </div>
+              <h3 class="bento-title">Intel/AMD Hybrid P/E Core Allocator</h3>
+              <p class="bento-desc">
+                Detects Performance Cores vs Efficiency Cores via <code style="color: var(--pastel-blue-text);">GetLogicalProcessorInformationEx</code>. Locks active games to P-Cores while clamping background bloat (Discord, Chrome) to E-Cores.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Hardware Core Topology</span>
+              <span class="bento-meta-badge">P/E Core Affinity</span>
+            </div>
+          </div>
+
+          <!-- Bento: WDDM GPU VRAM Cache Manager -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+              </div>
+              <h3 class="bento-title">WDDM GPU VRAM Decommitment</h3>
+              <p class="bento-desc">
+                Invokes WDDM 2.1+ kernel routine <code style="color: var(--pastel-blue-text);">D3DKMTTrimProcessCommitment</code> and DXGI multi-GPU telemetry to decommit unreferenced GPU texture buffers across background apps on exit.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>WDDM 2.1+ Driver Thunk</span>
+              <span class="bento-meta-badge">VRAM Reclaim</span>
+            </div>
+          </div>
+
+          <!-- Bento: Competitive Gaming Network Stack -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Competitive Low-Latency TCP Stack</h3>
+              <p class="bento-desc">
+                Configures <code style="color: var(--pastel-blue-text);">TCPNoDelay=1</code>, <code style="color: var(--pastel-blue-text);">TcpAckFrequency=1</code>, and eliminates Windows 20% network throttling to minimize gaming ping with atomic rollback backup.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Nagle's Algorithm Bypass</span>
+              <span class="bento-meta-badge">Instant ACKs</span>
+            </div>
+          </div>
+
+          <!-- Bento: Zero-Injection Minimalist Game HUD -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </div>
+              <h3 class="bento-title">Zero-Injection Game HUD (Ctrl+Shift+O)</h3>
+              <p class="bento-desc">
+                100% Anti-Cheat Safe (no DLL hooks). Always-on-top, click-through micro-overlay displaying live FPS, frame-time latency, RAM, VRAM, and 0.5ms scheduler timer resolution.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Anti-Cheat Safe</span>
+              <span class="bento-meta-badge">Click-Through HUD</span>
+            </div>
+          </div>
+
+          <!-- Bento: Driver Hard Fault Telemetry -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Hard Page Fault Telemetry</h3>
+              <p class="bento-desc">
+                Queries <code style="color: var(--pastel-blue-text);">NtQuerySystemInformation(2)</code> to monitor real-time disk page fault reads and diagnose the exact root causes of gaming frame-rate stutter.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>NT Performance Class 2</span>
+              <span class="bento-meta-badge">Stutter Detection</span>
             </div>
           </div>
 
@@ -800,20 +904,28 @@
               <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="clean">
                 --clean
               </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="network">
+                --network
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="vram">
+                --vram
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="cpu">
+                --cpu
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="telemetry">
+                --telemetry
+              </button>
+              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="hud">
+                --hud
+              </button>
               <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="json">
-                --stats --json
+                --json
               </button>
               <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="timer">
                 --timer-res 0.5
               </button>
-              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="combine">
-                --combine
-              </button>
-              <button type="button" class="terminal-tab-btn" role="tab" aria-selected="false" data-command="autostart">
-                --autostart
-              </button>
             </div>
-
             <button type="button" class="btn btn-icon-only" id="copy-terminal-btn" aria-label="Copy terminal command to clipboard" title="Copy command">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>

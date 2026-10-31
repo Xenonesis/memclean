@@ -416,6 +416,58 @@ Working Sets:  5124 MB`
 Physical RAM Freed: 7,824 MB
 Available Physical RAM: 10,640 MB / 16,000 MB (34% used)`
     },
+    network: {
+      cmd: 'memclean.exe --network-status',
+      output: `=== MemClean Competitive Network Latency Status ===
+Network Throttling Index: Some(0xFFFFFFFF) (Disabled: true)
+System Responsiveness   : Some(0) (Gaming 100%: true)
+Active Interfaces       : 2 detected (Optimized: 2/7)
+Rollback Backup Exists  : true
+  - [{2af6ca1] IP: 192.168.1.25 | TcpAckFrequency: 1 | TCPNoDelay: 1 | Optimized: true
+  - [{303fd9f] IP: 192.168.1.65 | TcpAckFrequency: 1 | TCPNoDelay: 1 | Optimized: true`
+    },
+    vram: {
+      cmd: 'memclean.exe --vram',
+      output: `=== MemClean GPU & Video Memory (VRAM) Diagnostics ===
+[0] Intel(R) Iris(R) Xe Graphics (Vendor: 0x8086, Device: 0x46A6)
+    Dedicated VRAM       : 128 MB
+    Dedicated System RAM : 0 MB
+    Shared System RAM    : 8044 MB
+[1] NVIDIA GeForce RTX 3060 Laptop GPU (Vendor: 0x10DE, Device: 0x2560)
+    Dedicated VRAM       : 5994 MB
+    Dedicated System RAM : 0 MB
+    Shared System RAM    : 8044 MB`
+    },
+    cpu: {
+      cmd: 'memclean.exe --cpu-topology',
+      output: `=== MemClean CPU Topology & Hybrid Architecture ===
+Physical Cores     : 14 (P-Cores: 6, E-Cores: 8)
+Logical Processors : 20 threads
+Architecture Type  : Intel/AMD Hybrid Core Architecture
+All-Cores Mask     : 0xFFFFF
+P-Cores Affinity   : 0xFFF
+E-Cores Affinity   : 0xFF000
+  Core [ 0.. 5]: P-Core | Class: 1 | SMT: true  | Mask: 0x0FFF
+  Core [ 6..13]: E-Core | Class: 0 | SMT: false | Mask: 0xFF000`
+    },
+    telemetry: {
+      cmd: 'memclean.exe --telemetry',
+      output: `=== MemClean Live Memory Telemetry & Stutter Risk ===
+Sampling Duration       : 1000 ms
+Hard Page Faults Rate   : 2 / sec (Disk Reads)
+Hard Fault I/O Ops Rate : 47384 / sec
+Total Page Faults Rate  : 9711 / sec
+Context Switches Rate   : 1857 / sec
+Stutter Risk Level      : Smooth (Zero Disk Stutter)`
+    },
+    hud: {
+      cmd: 'memclean.exe --hud',
+      output: `[INFO] Initializing Zero-Injection Minimalist Gaming HUD Overlay...
+[INFO] SetLayeredWindowAttributes(hwnd, 0, 225, LWA_ALPHA)... SUCCESS
+[INFO] Win32 Click-Through enabled: WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOPMOST
+[INFO] Global Hotkey registered: Ctrl + Shift + O (Toggle HUD)
+Gaming HUD Active in screen corner. 100% Anti-Cheat Safe.`
+    },
     aggressive: {
       cmd: 'memclean.exe --aggressive',
       output: `[WARN] Aggressive mode requested.
