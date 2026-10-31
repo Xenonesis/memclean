@@ -1,7 +1,7 @@
 [Setup]
 AppId={{9F57C02D-2A9F-4D2A-B981-D189873E4A10}}
 AppName=MemClean
-AppVersion=1.0.0
+AppVersion=1.1.0
 AppPublisher=MemClean
 DefaultDirName={autopf}\MemClean
 DefaultGroupName=MemClean

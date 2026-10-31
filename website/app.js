@@ -394,7 +394,7 @@ function initTerminalShowcase() {
   const COMMAND_DATA = {
     status: {
       cmd: 'memclean.exe --status',
-      output: `MemClean - Ultra-Lightweight Pure Rust Memory Optimizer v1.0.0
+      output: `MemClean - Ultra-Lightweight Pure Rust Memory Optimizer v1.1.0
 RAM Used:   13184 MB (82%)
 RAM Avail:  2816 MB
 RAM Total:  16000 MB
@@ -406,7 +406,7 @@ Working Sets:  5124 MB`
     },
     clean: {
       cmd: 'memclean.exe --clean',
-      output: `[INFO] Initializing MemClean v1.0.0...
+      output: `[INFO] Initializing MemClean v1.1.0...
 [INFO] Acquired SeProfileSingleProcessPrivilege & SeIncreaseQuotaPrivilege.
 [INFO] Purging Standby List (NtSetSystemInformation)... OK
 [INFO] Purging Low-Priority Standby List (Priority 0)... OK
