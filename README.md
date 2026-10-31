@@ -215,6 +215,7 @@ MemClean is a dual-mode binary. When invoked with command-line arguments, it aut
 | `memclean.exe --cpu-unpark` | Unparks 100% of CPU cores (`CPMINCORES 100`) for zero-latency burst performance. | High-performance gaming and latency tuning. |
 | `memclean.exe --cpu-restore-parking` | Restores default Windows core parking behavior. | Power saving / default policy rollback. |
 | `memclean.exe --telemetry` | Samples live kernel hard page faults, disk I/O ops, context switches, and stutter risk. | Frame-drop / micro-stutter diagnosis. |
+| `memclean.exe --hud` | Launches the zero-injection, click-through gaming HUD micro-overlay (`Ctrl+Shift+O`). | In-game non-invasive performance HUD. |
 | `memclean.exe --silent` / `-s` | Suppresses console stdout (exit code 0 on success). | Silent batch scripts and Task Scheduler runs. |
 | `memclean.exe --autostart` | Registers elevated auto-start in Windows Task Scheduler (`schtasks`). | Post-install automated configuration. |
 | `memclean.exe --no-autostart`| Removes elevated auto-start task from Task Scheduler. | Deconfiguration / uninstallation. |

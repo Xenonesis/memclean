@@ -40,7 +40,7 @@ static mut D_FONT_DESC: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::nul
 
 static mut CURRENT_TAB: usize = 0;
 
-const TAB_0_CTRLS: &[i32] = &[101, 102, 103, 104, 105, 201, 202, 204, 203, 214];
+const TAB_0_CTRLS: &[i32] = &[101, 102, 103, 104, 105, 201, 202, 204, 215, 203, 214];
 const TAB_1_CTRLS: &[i32] = &[
     205, 206, 207, 208, 209, 210, 211, 212, 213,
     220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233,
@@ -226,9 +226,10 @@ pub fn show_settings_dialog(_parent: HWND) {
         create_radio(windows_sys::w!("Click Optimizes Memory Instantly"), 30, 286, 420, 202);
 
         // Card 2: System Behavior & Startup
-        create_chk(windows_sys::w!("Enable Global Hotkey (Ctrl + Alt + M)"), 30, 332, 420, 204);
-        create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 30, 354, 420, 203);
-        create_chk(windows_sys::w!("Automatically check for updates on startup"), 30, 376, 420, 214);
+        create_chk(windows_sys::w!("Enable Global Hotkey (Ctrl + Alt + M)"), 30, 328, 420, 204);
+        create_chk(windows_sys::w!("Enable Gaming HUD Micro-Overlay (Ctrl + Shift + O)"), 30, 348, 420, 215);
+        create_chk(windows_sys::w!("Start Minimized to System Tray on Login"), 30, 368, 420, 203);
+        create_chk(windows_sys::w!("Automatically check for updates on startup"), 30, 388, 420, 214);
 
         // --- TAB 1: AUTO-TRIGGERS ---
         // Card 1: RAM Threshold Controls
@@ -455,6 +456,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         set_checked(hwnd, 203, cfg.general.start_minimized);
         set_checked(hwnd, 204, cfg.general.global_hotkey_enabled);
         set_checked(hwnd, 214, cfg.updates.check_on_startup);
+        set_checked(hwnd, 215, cfg.general.gaming_hud_enabled);
         set_checked(hwnd, 260, cfg.network.low_latency_enabled);
         set_checked(hwnd, 270, cfg.tuning.vram_trim_on_clean);
         set_checked(hwnd, 243, cfg.tuning.unpark_cores_enabled);
@@ -749,6 +751,13 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 cfg.general.start_minimized = is_checked(hwnd, 203);
                 cfg.general.global_hotkey_enabled = is_checked(hwnd, 204);
                 cfg.updates.check_on_startup = is_checked(hwnd, 214);
+                let hud_enabled = is_checked(hwnd, 215);
+                cfg.general.gaming_hud_enabled = hud_enabled;
+                if hud_enabled {
+                    crate::ui::hud::show_hud();
+                } else {
+                    crate::ui::hud::hide_hud();
+                }
 
                 let mut buf = [0u16; 16];
                 let len = GetWindowTextW(GetDlgItem(hwnd, 205), buf.as_mut_ptr(), buf.len() as i32);
@@ -886,7 +895,7 @@ mod tests {
     #[test]
     fn test_all_expected_controls_mapped() {
         let expected = [
-            101, 102, 103, 104, 105, 201, 202, 203, 204, 214, // Tab 0
+            101, 102, 103, 104, 105, 201, 202, 204, 215, 203, 214, // Tab 0
             205, 206, 207, 208, 209, 210, 211, 212, 213, // Tab 1 threshold & timer
             220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233, // Tab 1 islc & idle
             240, 241, 242, 243, 250, 270, 275, 251, 260, 261, 262, // Tab 2 kernel, de-dup, vram, cpu & network

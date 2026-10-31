@@ -28,7 +28,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
     WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
-use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT};
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT};
 use windows_sys::Win32::UI::WindowsAndMessaging::HICON;
 
 const EMBEDDED_ICO: &[u8] = include_bytes!("../../memclean.ico");
@@ -119,6 +119,7 @@ const WM_TRAYICON: u32 = WM_USER + 1;
 const WM_UPDATE_CHECK_RESULT: u32 = WM_USER + 2;
 const NIN_BALLOONUSERCLICK: u32 = 0x0405;
 const HOTKEY_ID: i32 = 2001;
+const HOTKEY_HUD_ID: i32 = 2002;
 const PROCESS_TIMER_ID: usize = 1002;
 const TIMER_ID: usize = 1001;
 
@@ -350,7 +351,10 @@ unsafe fn update_top_processes(hwnd: HWND) {
 }
 unsafe fn sync_global_hotkey(hwnd: HWND, enabled: bool) -> bool {
     UnregisterHotKey(hwnd, HOTKEY_ID);
-    !enabled || RegisterHotKey(hwnd, HOTKEY_ID, MOD_ALT | MOD_CONTROL | MOD_NOREPEAT, 0x4D) != 0
+    let ok1 = !enabled || RegisterHotKey(hwnd, HOTKEY_ID, MOD_ALT | MOD_CONTROL | MOD_NOREPEAT, 0x4D) != 0;
+    UnregisterHotKey(hwnd, HOTKEY_HUD_ID);
+    let ok2 = RegisterHotKey(hwnd, HOTKEY_HUD_ID, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x4F) != 0;
+    ok1 && ok2
 }
 
 use std::sync::Mutex;
@@ -857,7 +861,8 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             0
         }
         WM_HOTKEY => {
-            if wparam as i32 == HOTKEY_ID {
+            let hotkey_id = wparam as i32;
+            if hotkey_id == HOTKEY_ID {
                 let cfg = get_config();
                 let before = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
                 let _ = cleaner::perform_clean(&cfg, false);
@@ -867,6 +872,11 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 set_text(hwnd, 103, &status);
                 show_tray_notification(hwnd, "MemClean Hotkey", &format!("Freed {} MB RAM.", freed));
                 update_stats_display(hwnd);
+            } else if hotkey_id == HOTKEY_HUD_ID {
+                crate::ui::hud::toggle_hud();
+                let visible = crate::ui::hud::is_hud_visible();
+                let msg = if visible { "Gaming HUD Enabled (Ctrl+Shift+O to toggle)" } else { "Gaming HUD Hidden" };
+                set_text(hwnd, 103, &format!("Status: {}", msg));
             }
             0
         }
@@ -1332,6 +1342,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
         }
         WM_DESTROY => {
             UnregisterHotKey(hwnd, HOTKEY_ID);
+            UnregisterHotKey(hwnd, HOTKEY_HUD_ID);
             if !G_BG_BRUSH.is_null() {
                 DeleteObject(G_BG_BRUSH);
                 G_BG_BRUSH = std::ptr::null_mut();

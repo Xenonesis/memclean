@@ -65,6 +65,8 @@ pub struct GeneralConfig {
     pub auto_elevate: bool,
     #[serde(default = "default_true")]
     pub minimize_to_tray: bool,
+    #[serde(default)]
+    pub gaming_hud_enabled: bool,
 }
 
 fn default_tray_update_interval_sec() -> u32 {
@@ -80,6 +82,7 @@ impl Default for GeneralConfig {
             global_hotkey_enabled: true,
             auto_elevate: true,
             minimize_to_tray: true,
+            gaming_hud_enabled: false,
         }
     }
 }

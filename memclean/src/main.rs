@@ -205,6 +205,7 @@ fn print_help() {
     print_line("      --cpu-unpark          Unpark 100% of CPU cores (CPMINCORES 100) for zero-latency burst performance");
     print_line("      --cpu-restore-parking Reset CPU core parking behavior to Windows default");
     print_line("      --telemetry           Sample 1-second kernel hard page faults, disk I/O, and stutter risk");
+    print_line("      --hud                 Launch standalone zero-injection gaming HUD micro-overlay");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -536,6 +537,16 @@ fn main() {
                 Err(e) => {
                     print_line(&format!("Error collecting telemetry: {}", e));
                 }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--hud") {
+            print_line("Launching MemClean Gaming HUD overlay (Ctrl+Shift+O to toggle)...");
+            #[cfg(windows)]
+            {
+                memclean::ui::hud::show_hud();
+                std::thread::sleep(std::time::Duration::from_secs(10));
             }
             return;
         }
