@@ -226,24 +226,43 @@ fn print_help() {
 fn register_autostart(enable: bool) {
     let current_exe = env::current_exe().unwrap_or_default();
     let exe_str = current_exe.to_string_lossy();
+    let value_data = format!("\"{}\" --minimized", exe_str);
 
-    if enable {
-        let status = std::process::Command::new("schtasks")
-            .args(&[
-                "/create",
-                "/tn", "MemCleanAutoStart",
-                "/tr", &format!("\"{}\" --minimized", exe_str),
-                "/sc", "onlogon",
-                "/rl", "highest",
-                "/f"
-            ])
-            .status();
-        print_line(&format!("Registered elevated task scheduler autostart: {:?}", status));
-    } else {
-        let status = std::process::Command::new("schtasks")
-            .args(&["/delete", "/tn", "MemCleanAutoStart", "/f"])
-            .status();
-        print_line(&format!("Removed task scheduler autostart: {:?}", status));
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::System::Registry::{
+            RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegSetValueExW, HKEY_CURRENT_USER,
+            KEY_ALL_ACCESS, REG_SZ,
+        };
+
+        let subkey = windows_sys::w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+        let val_name = windows_sys::w!("MemClean");
+        let mut hkey = std::ptr::null_mut();
+
+        if RegOpenKeyExW(HKEY_CURRENT_USER, subkey, 0, KEY_ALL_ACCESS, &mut hkey) == 0 && !hkey.is_null() {
+            if enable {
+                let wide_data: Vec<u16> = value_data.encode_utf16().chain(std::iter::once(0)).collect();
+                let res = RegSetValueExW(
+                    hkey,
+                    val_name,
+                    0,
+                    REG_SZ,
+                    wide_data.as_ptr() as _,
+                    (wide_data.len() * 2) as u32,
+                );
+                if res == 0 {
+                    print_line("Registered MemClean in Windows startup (HKCU Run key).");
+                } else {
+                    print_line(&format!("Failed to register startup in registry (code: {})", res));
+                }
+            } else {
+                let _ = RegDeleteValueW(hkey, val_name);
+                print_line("Removed MemClean from Windows startup (HKCU Run key).");
+            }
+            RegCloseKey(hkey);
+        } else {
+            print_line("Failed to open HKCU Run registry key.");
+        }
     }
 }
 

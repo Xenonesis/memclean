@@ -20,7 +20,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "autostart"; Description: "Run MemClean automatically on Windows startup (Silent Elevation)"; GroupDescription: "Startup:"
+Name: "autostart"; Description: "Run MemClean automatically on Windows startup"; GroupDescription: "Startup:"
 
 [Files]
 Source: "..\dist\memclean.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -30,10 +30,13 @@ Name: "{group}\MemClean"; Filename: "{app}\memclean.exe"
 Name: "{group}\Uninstall MemClean"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\MemClean"; Filename: "{app}\memclean.exe"; Tasks: desktopicon
 
+
+[Registry]
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MemClean"; ValueData: """{app}\memclean.exe"" --minimized"; Flags: uninsdeletevalue; Tasks: autostart
 [Run]
-Filename: "{app}\memclean.exe"; Parameters: "--autostart"; Tasks: autostart; Flags: runhidden
+
 Filename: "{app}\memclean.exe"; Description: "{cm:LaunchProgram,MemClean}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
-Filename: "{sys}\schtasks.exe"; Parameters: "/delete /tn MemCleanAutoStart /f"; Flags: runhidden; RunOnceId: "MemCleanDelTask"
+
 Filename: "{sys}\taskkill.exe"; Parameters: "/f /im memclean.exe"; Flags: runhidden; RunOnceId: "MemCleanKillProc"
