@@ -233,6 +233,10 @@ pub struct TuningConfig {
     pub combine_pages_on_clean: bool,
     #[serde(default)]
     pub vram_trim_on_clean: bool,
+    #[serde(default)]
+    pub hybrid_cpu_optimizer_enabled: bool,
+    #[serde(default)]
+    pub unpark_cores_enabled: bool,
 }
 
 fn default_timer_res_mode() -> String {
@@ -246,6 +250,8 @@ impl Default for TuningConfig {
             timer_resolution_mode: default_timer_res_mode(),
             combine_pages_on_clean: false,
             vram_trim_on_clean: false,
+            hybrid_cpu_optimizer_enabled: false,
+            unpark_cores_enabled: false,
         }
     }
 }

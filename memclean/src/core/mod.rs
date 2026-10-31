@@ -7,3 +7,4 @@ pub mod timer_res;
 pub mod updater;
 pub mod network;
 pub mod vram;
+pub mod cpu;

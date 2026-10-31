@@ -45,7 +45,7 @@ const TAB_1_CTRLS: &[i32] = &[
     205, 206, 207, 208, 209, 210, 211, 212, 213,
     220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233,
 ];
-const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 251, 250, 270, 252, 260, 261, 262];
+const TAB_2_CTRLS: &[i32] = &[240, 241, 242, 243, 251, 250, 270, 275, 260, 261, 262];
 
 const BST_CHECKED: usize = 1;
 const BST_UNCHECKED: usize = 0;
@@ -396,35 +396,27 @@ pub fn show_settings_dialog(_parent: HWND) {
 
         // --- TAB 2: KERNEL & GAMING ---
         // Card 1: Scheduler Timer Resolution
-        create_radio(windows_sys::w!("Default Timer Resolution (15.6 ms - Standard)"), 30, 88, 420, 240);
-        create_radio(windows_sys::w!("1.0 ms Multimedia Latency (1,000 µs - Audio / Video Sync)"), 30, 112, 420, 241);
-        create_radio(windows_sys::w!("0.5 ms Competitive Gaming (500 µs - Minimum Latency)"), 30, 136, 420, 242);
+        create_radio(windows_sys::w!("Default Timer Resolution (15.6 ms - Standard)"), 30, 84, 420, 240);
+        create_radio(windows_sys::w!("1.0 ms Multimedia Latency (1,000 µs - Audio / Video Sync)"), 30, 106, 420, 241);
+        create_radio(windows_sys::w!("0.5 ms Competitive Gaming (500 µs - Minimum Latency)"), 30, 128, 420, 242);
+        create_chk(windows_sys::w!("Unpark 100% CPU Cores (Zero-Latency Burst Performance)"), 30, 152, 420, 243);
 
         let lbl_res_desc = CreateWindowExW(
             0, windows_sys::w!("STATIC"),
-            windows_sys::w!("Locks Windows kernel timer resolution to minimize latency, eliminate frame drops, and stabilize frametimes in competitive games."),
+            windows_sys::w!("Locks Windows kernel timer resolution to 0.5ms and unparks all cores for zero-stutter gaming."),
             WS_CHILD | WS_VISIBLE,
-            30, 166, 420, 40, hwnd, 251 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            30, 178, 420, 36, hwnd, 251 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !lbl_res_desc.is_null() && !D_FONT_DESC.is_null() {
             SendMessageW(lbl_res_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
         }
 
-        // Card 2: Kernel Page Combining, VRAM & Network Latency
-        create_chk(windows_sys::w!("Enable Kernel Page Combining (RAM De-duplication)"), 30, 262, 420, 250);
-        create_chk(windows_sys::w!("Enable GPU / VRAM Decommitment on Clean (WDDM 2.1+)"), 30, 284, 420, 270);
+        // Card 2: Kernel Page Combining, VRAM, CPU & Network Latency
+        create_chk(windows_sys::w!("Enable Kernel Page Combining (RAM De-duplication)"), 30, 264, 420, 250);
+        create_chk(windows_sys::w!("Enable GPU / VRAM Decommitment on Clean (WDDM 2.1+)"), 30, 285, 420, 270);
+        create_chk(windows_sys::w!("Enable Hybrid CPU Scheduling (Games to P-Cores, Bloat to E-Cores)"), 30, 306, 420, 275);
 
-        let lbl_page_desc = CreateWindowExW(
-            0, windows_sys::w!("STATIC"),
-            windows_sys::w!("Scans physical RAM for duplicate pages and decommits unreferenced GPU texture buffers."),
-            WS_CHILD | WS_VISIBLE,
-            30, 306, 420, 18, hwnd, 252 as _, std::ptr::null_mut(), std::ptr::null_mut(),
-        );
-        if !lbl_page_desc.is_null() && !D_FONT_DESC.is_null() {
-            SendMessageW(lbl_page_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
-        }
-
-        create_chk(windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"), 30, 344, 420, 260);
+        create_chk(windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"), 30, 350, 420, 260);
 
         let btn_net_restore = CreateWindowExW(
             0, windows_sys::w!("BUTTON"), windows_sys::w!("Restore Network Defaults"),
@@ -444,6 +436,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         if !lbl_net_desc.is_null() && !D_FONT_DESC.is_null() {
             SendMessageW(lbl_net_desc, WM_SETFONT, D_FONT_DESC as WPARAM, 1);
         }
+
         // Load current config into controls
         let cfg = AppConfig::load();
         match cfg.tray.style {
@@ -464,6 +457,8 @@ pub fn show_settings_dialog(_parent: HWND) {
         set_checked(hwnd, 214, cfg.updates.check_on_startup);
         set_checked(hwnd, 260, cfg.network.low_latency_enabled);
         set_checked(hwnd, 270, cfg.tuning.vram_trim_on_clean);
+        set_checked(hwnd, 243, cfg.tuning.unpark_cores_enabled);
+        set_checked(hwnd, 275, cfg.tuning.hybrid_cpu_optimizer_enabled);
 
         let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
         let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
@@ -593,13 +588,13 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
 
                     // Card 2: Memory De-duplication & Network (16, 238, 468, 412)
                     RoundRect(hdc, 16, 238, 468, 412, 8, 8);
-                    let mut hpage_rc = RECT { left: 30, top: 248, right: 454, bottom: 262 };
+                    let mut hpage_rc = RECT { left: 30, top: 246, right: 454, bottom: 258 };
                     DrawTextW(hdc, windows_sys::w!("MEMORY DE-DUPLICATION (NT KERNEL)"), -1, &mut hpage_rc, DT_SINGLELINE);
 
                     MoveToEx(hdc, 30, 328, std::ptr::null_mut());
                     LineTo(hdc, 454, 328);
 
-                    let mut hnet_rc = RECT { left: 30, top: 332, right: 454, bottom: 344 };
+                    let mut hnet_rc = RECT { left: 30, top: 334, right: 454, bottom: 346 };
                     DrawTextW(hdc, windows_sys::w!("COMPETITIVE NETWORK STACK (LOW PING)"), -1, &mut hnet_rc, DT_SINGLELINE);
                 }
             }
@@ -805,6 +800,16 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
 
                 cfg.tuning.combine_pages_on_clean = is_checked(hwnd, 250);
                 cfg.tuning.vram_trim_on_clean = is_checked(hwnd, 270);
+                cfg.tuning.hybrid_cpu_optimizer_enabled = is_checked(hwnd, 275);
+                let unpark_checked = is_checked(hwnd, 243);
+                if unpark_checked != cfg.tuning.unpark_cores_enabled {
+                    cfg.tuning.unpark_cores_enabled = unpark_checked;
+                    if unpark_checked {
+                        let _ = crate::core::cpu::unpark_all_cores();
+                    } else {
+                        let _ = crate::core::cpu::restore_core_parking_default();
+                    }
+                }
                 let net_opt_checked = is_checked(hwnd, 260);
                 if net_opt_checked != cfg.network.low_latency_enabled {
                     cfg.network.low_latency_enabled = net_opt_checked;
@@ -884,7 +889,7 @@ mod tests {
             101, 102, 103, 104, 105, 201, 202, 203, 204, 214, // Tab 0
             205, 206, 207, 208, 209, 210, 211, 212, 213, // Tab 1 threshold & timer
             220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233, // Tab 1 islc & idle
-            240, 241, 242, 250, 270, 251, 252, 260, 261, 262, // Tab 2 kernel, de-dup, vram & network
+            240, 241, 242, 243, 250, 270, 275, 251, 260, 261, 262, // Tab 2 kernel, de-dup, vram, cpu & network
         ];
         for &id in &expected {
             let in_0 = TAB_0_CTRLS.contains(&id);

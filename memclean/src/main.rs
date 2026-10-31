@@ -201,6 +201,9 @@ fn print_help() {
     print_line("      --network-restore     Restore Windows default network throttling and TCP stack settings");
     print_line("      --vram, --gpu-status  Display detected GPU adapters, dedicated VRAM, and shared RAM");
     print_line("      --vram-trim           Decommit and purge eligible GPU video memory commitments (WDDM)");
+    print_line("      --cpu-topology        Display detected CPU physical cores, P-Cores, E-Cores, and SMT threads");
+    print_line("      --cpu-unpark          Unpark 100% of CPU cores (CPMINCORES 100) for zero-latency burst performance");
+    print_line("      --cpu-restore-parking Reset CPU core parking behavior to Windows default");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -451,6 +454,58 @@ fn main() {
                 "GPU VRAM trim executed: {:.2} MB video memory decommitted across {} processes.",
                 report.mb_decommitted, report.processes_trimmed
             ));
+            return;
+        }
+
+        if args.iter().any(|a| a == "--cpu-topology") {
+            let topo = memclean::core::cpu::get_cpu_topology();
+            print_line("=== MemClean CPU Topology & Hybrid Architecture ===");
+            print_line(&format!(
+                "Physical Cores     : {} (P-Cores: {}, E-Cores: {})",
+                topo.total_physical_cores, topo.p_cores_count, topo.e_cores_count
+            ));
+            print_line(&format!(
+                "Logical Processors : {} threads",
+                topo.total_logical_processors
+            ));
+            print_line(&format!(
+                "Architecture Type  : {}",
+                if topo.is_hybrid { "Intel/AMD Hybrid Core Architecture" } else { "Monolithic Symmetric Core Architecture" }
+            ));
+            print_line(&format!("All-Cores Mask     : 0x{:X}", topo.all_cores_mask));
+            print_line(&format!("P-Cores Affinity   : 0x{:X}", topo.p_cores_mask));
+            print_line(&format!("E-Cores Affinity   : 0x{:X}", topo.e_cores_mask));
+            for c in &topo.cores {
+                let kind = if c.is_performance { "P-Core" } else { "E-Core" };
+                print_line(&format!(
+                    "  Core [{:2}]: {} | Class: {} | SMT: {} | Mask: 0x{:X}",
+                    c.core_index, kind, c.efficiency_class, c.smt_enabled, c.affinity_mask
+                ));
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--cpu-unpark") {
+            match memclean::core::cpu::unpark_all_cores() {
+                Ok(()) => {
+                    print_line("CPU core parking disabled: 100% of CPU cores unparked for maximum responsiveness.");
+                }
+                Err(e) => {
+                    print_line(&format!("Error unparking CPU cores: {}", e));
+                }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--cpu-restore-parking") {
+            match memclean::core::cpu::restore_core_parking_default() {
+                Ok(()) => {
+                    print_line("CPU core parking restored to Windows default scheme.");
+                }
+                Err(e) => {
+                    print_line(&format!("Error restoring CPU core parking: {}", e));
+                }
+            }
             return;
         }
 

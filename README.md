@@ -211,6 +211,9 @@ MemClean is a dual-mode binary. When invoked with command-line arguments, it aut
 | `memclean.exe --network-restore` | Restores original Windows default network throttling and TCP settings from atomic backup. | Safe 1-click network rollback. |
 | `memclean.exe --vram` / `--gpu-status` | Displays detected GPU hardware adapters, dedicated VRAM, and shared system memory. | Multi-GPU / VRAM telemetry. |
 | `memclean.exe --vram-trim` | Decommits and purges eligible GPU video memory commitments via WDDM (`D3DKMTTrimProcessCommitment`). | Post-game VRAM defragmentation. |
+| `memclean.exe --cpu-topology` | Displays physical CPU core topology, P-Cores, E-Cores, SMT threads, and affinity masks. | Hybrid CPU architecture inspection. |
+| `memclean.exe --cpu-unpark` | Unparks 100% of CPU cores (`CPMINCORES 100`) for zero-latency burst performance. | High-performance gaming and latency tuning. |
+| `memclean.exe --cpu-restore-parking` | Restores default Windows core parking behavior. | Power saving / default policy rollback. |
 | `memclean.exe --silent` / `-s` | Suppresses console stdout (exit code 0 on success). | Silent batch scripts and Task Scheduler runs. |
 | `memclean.exe --autostart` | Registers elevated auto-start in Windows Task Scheduler (`schtasks`). | Post-install automated configuration. |
 | `memclean.exe --no-autostart`| Removes elevated auto-start task from Task Scheduler. | Deconfiguration / uninstallation. |

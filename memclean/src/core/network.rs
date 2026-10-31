@@ -432,6 +432,6 @@ mod tests {
     fn test_network_status_query() {
         // Read-only query should not fail or panic
         let status = get_network_status();
-        assert!(status.interfaces.len() >= 0);
+        assert!(status.active_interfaces_count <= status.interfaces.len());
     }
 }
