@@ -302,9 +302,16 @@ unsafe fn update_stats_display(hwnd: HWND) {
         }
         G_USED_PERCENT = stats.used_percent;
         let used_str = format!("RAM Used: {} MB ({}%)", stats.used_phys_mb, stats.used_percent);
+        let (hf, risk) = crate::core::telemetry::get_instant_fault_telemetry();
+        let risk_tag = match risk {
+            crate::core::telemetry::StutterRiskLevel::Smooth => "Smooth",
+            crate::core::telemetry::StutterRiskLevel::Moderate => "Minor",
+            crate::core::telemetry::StutterRiskLevel::Elevated => "Stutter",
+            crate::core::telemetry::StutterRiskLevel::Severe => "Thrashing",
+        };
         let legend_str = format!(
-            "Standby: {} MB | Free: {} MB | Mod: {} MB",
-            stats.standby_total_mb, stats.free_phys_mb, stats.modified_mb
+            "Standby: {} MB | Free: {} MB | Faults: {}/s ({})",
+            stats.standby_total_mb, stats.free_phys_mb, hf, risk_tag
         );
         set_text(hwnd, 101, &used_str);
         set_text(hwnd, 102, &legend_str);

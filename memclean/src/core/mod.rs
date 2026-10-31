@@ -8,3 +8,4 @@ pub mod updater;
 pub mod network;
 pub mod vram;
 pub mod cpu;
+pub mod telemetry;

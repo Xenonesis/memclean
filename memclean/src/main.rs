@@ -204,6 +204,7 @@ fn print_help() {
     print_line("      --cpu-topology        Display detected CPU physical cores, P-Cores, E-Cores, and SMT threads");
     print_line("      --cpu-unpark          Unpark 100% of CPU cores (CPMINCORES 100) for zero-latency burst performance");
     print_line("      --cpu-restore-parking Reset CPU core parking behavior to Windows default");
+    print_line("      --telemetry           Sample 1-second kernel hard page faults, disk I/O, and stutter risk");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -312,7 +313,8 @@ fn main() {
 
         let is_json = args.iter().any(|a| a == "--json");
         let is_stats = args.iter().any(|a| a == "--stats" || a == "--status");
-        if is_stats || is_json {
+        let is_telemetry = args.iter().any(|a| a == "--telemetry");
+        if (is_stats || is_json) && !is_telemetry {
             if is_json {
                 print_stats_json();
             } else {
@@ -504,6 +506,35 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error restoring CPU core parking: {}", e));
+                }
+            }
+            return;
+        }
+
+        if args.iter().any(|a| a == "--telemetry") {
+            let is_json = args.iter().any(|a| a == "--json");
+            match memclean::core::telemetry::sample_fault_telemetry(std::time::Duration::from_millis(1000)) {
+                Ok(t) => {
+                    if is_json {
+                        if let Ok(j) = serde_json::to_string_pretty(&t) {
+                            print_line(&j);
+                        }
+                    } else {
+                        print_line("=== MemClean Live Memory Telemetry & Stutter Risk ===");
+                        print_line(&format!("Sampling Duration       : {} ms", t.sample_duration_ms));
+                        print_line(&format!("Hard Page Faults Rate   : {} / sec (Disk Reads)", t.hard_faults_per_sec));
+                        print_line(&format!("Hard Fault I/O Ops Rate : {} / sec", t.hard_fault_io_per_sec));
+                        print_line(&format!("Total Page Faults Rate  : {} / sec", t.total_page_faults_per_sec));
+                        print_line(&format!("Context Switches Rate   : {} / sec", t.context_switches_per_sec));
+                        print_line(&format!("Stutter Risk Level      : {}", t.stutter_risk.as_str()));
+                        print_line("\nTop Page Faulting Processes (Cumulative):");
+                        for p in &t.top_faulting_processes {
+                            print_line(&format!("  - [{:5}] {:<24} : {:>10} faults", p.pid, p.name, p.page_fault_count));
+                        }
+                    }
+                }
+                Err(e) => {
+                    print_line(&format!("Error collecting telemetry: {}", e));
                 }
             }
             return;
