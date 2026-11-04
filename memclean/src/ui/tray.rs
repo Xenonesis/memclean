@@ -772,6 +772,8 @@ pub fn run_application(start_minimized: bool) {
         // Register global hotkey Ctrl+Alt+M if enabled.
         if !sync_global_hotkey(hwnd, get_config().general.global_hotkey_enabled) {
             set_text(hwnd, 103, "Status: Ctrl+Alt+M is already in use.");
+        } else if !crate::core::privileges::is_elevated() {
+            set_text(hwnd, 103, "Status: Ready (Standard User - Standby requires Admin).");
         }
         if get_config().updates.check_on_startup {
             trigger_update_check(hwnd, false);
@@ -1013,7 +1015,13 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let _ = cleaner::perform_clean(&config, false);
                     let after = memory::get_memory_stats().map(|s| s.avail_phys_mb).unwrap_or(0);
                     let freed = if after > before { after - before } else { 0 };
-                    set_text(hwnd, 103, &format!("Status: Optimized! Freed {} MB RAM.", freed));
+                    let is_admin = crate::core::privileges::is_elevated();
+                    let status_msg = if is_admin {
+                        format!("Status: Optimized! Freed {} MB RAM.", freed)
+                    } else {
+                        format!("Status: Optimized! Freed {} MB RAM (Standard User - Standby skipped).", freed)
+                    };
+                    set_text(hwnd, 103, &status_msg);
                     update_stats_display(hwnd);
 
                     if id == 502 {
@@ -1021,14 +1029,28 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     }
                 }
                 202 | 503 => { // Purge Standby
-                    let _ = crate::core::ntdll::purge_standby_list();
-                    set_text(hwnd, 103, "Status: Standby list purged.");
+                    match crate::core::ntdll::purge_standby_list() {
+                        Ok(()) => set_text(hwnd, 103, "Status: Standby list purged."),
+                        Err(_) => {
+                            if !crate::core::privileges::is_elevated() {
+                                set_text(hwnd, 103, "Status: Standby purge failed (Requires Administrator).");
+                            } else {
+                                set_text(hwnd, 103, "Status: Standby purge failed.");
+                            }
+                        }
+                    }
                     update_stats_display(hwnd);
                 }
                 203 | 507 => { // Combine Pages
                     match cleaner::combine_pages_only() {
                         Ok(c) => set_text(hwnd, 103, &format!("Status: Combined {} pages ({:.1} MB saved).", c.pages_combined, c.mb_saved)),
-                        Err(e) => set_text(hwnd, 103, &format!("Status: Combine failed: {}", e)),
+                        Err(e) => {
+                            if !crate::core::privileges::is_elevated() {
+                                set_text(hwnd, 103, "Status: Combine failed (Requires Administrator).");
+                            } else {
+                                set_text(hwnd, 103, &format!("Status: Combine failed: {}", e));
+                            }
+                        }
                     }
                     update_stats_display(hwnd);
                 }
@@ -1079,8 +1101,16 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     SetForegroundWindow(hwnd);
                 }
                 504 => { // Empty Working Sets
-                    let _ = crate::core::ntdll::empty_system_working_sets();
-                    set_text(hwnd, 103, "Status: Working sets emptied.");
+                    match crate::core::ntdll::empty_system_working_sets() {
+                        Ok(()) => set_text(hwnd, 103, "Status: Working sets emptied."),
+                        Err(_) => {
+                            if !crate::core::privileges::is_elevated() {
+                                set_text(hwnd, 103, "Status: Empty working sets failed (Requires Administrator).");
+                            } else {
+                                set_text(hwnd, 103, "Status: Empty working sets failed.");
+                            }
+                        }
+                    }
                     update_stats_display(hwnd);
                 }
                 601..=605 => {
@@ -1132,10 +1162,14 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
             if !logo_icon.is_null() {
                 DrawIconEx(hdc, 22, 14, logo_icon, 20, 20, 0, std::ptr::null_mut(), DI_NORMAL);
             }
-            let header1 = windows_sys::w!("MEMCLEAN — PHYSICAL RAM TELEMETRY");
-            let mut h1_rc = RECT { left: 47, top: 17, right: 240, bottom: 32 };
+            let is_admin = crate::core::privileges::is_elevated();
+            let header1 = if is_admin {
+                windows_sys::w!("MEMCLEAN — PHYSICAL RAM TELEMETRY")
+            } else {
+                windows_sys::w!("MEMCLEAN — RAM TELEMETRY (STANDARD USER)")
+            };
+            let mut h1_rc = RECT { left: 47, top: 17, right: 290, bottom: 32 };
             DrawTextW(hdc, header1, -1, &mut h1_rc, DT_SINGLELINE);
-
             let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
             let timer_str = format!("Timer: {:.3} ms\0", cur_res);
             let timer_wide: Vec<u16> = timer_str.encode_utf16().collect();

@@ -50,6 +50,8 @@ pub fn combine_physical_memory() -> Result<CombineResult, String> {
                 pages_combined: info.pages_combined,
                 mb_saved: mb,
             })
+        } else if (status as u32) == 0xC0000061 {
+            Err("NtSetSystemInformation(130) failed with NTSTATUS: 0xC0000061 (requires Administrator privileges)".to_string())
         } else {
             Err(format!(
                 "NtSetSystemInformation(130) failed with NTSTATUS: {:#010X}",
