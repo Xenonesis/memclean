@@ -173,3 +173,75 @@ pub fn set_process_eco_qos(pid: u32, enable: bool) -> Result<(), String> {
         }
     }
 }
+
+#[cfg(windows)]
+pub fn register_autostart(enable: bool) -> Result<(), String> {
+    let current_exe = std::env::current_exe().map_err(|e| format!("Failed to get current executable path: {}", e))?;
+    let exe_str = current_exe.to_str().ok_or_else(|| "Invalid UTF-8 in executable path".to_string())?;
+    let value_data = format!("\"{}\" --minimized", exe_str);
+
+    unsafe {
+        use windows_sys::Win32::System::Registry::{
+            RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegSetValueExW, HKEY_CURRENT_USER,
+            KEY_ALL_ACCESS, REG_SZ,
+        };
+
+        let subkey = windows_sys::w!("Software\\Microsoft\\Windows\\CurrentVersion\\Run");
+        let val_name = windows_sys::w!("MemClean");
+        let mut hkey = std::ptr::null_mut();
+
+        if RegOpenKeyExW(HKEY_CURRENT_USER, subkey, 0, KEY_ALL_ACCESS, &mut hkey) != 0 || hkey.is_null() {
+            return Err("Failed to open HKCU Run registry key".to_string());
+        }
+
+        let res = if enable {
+            let wide_data: Vec<u16> = value_data.encode_utf16().chain(std::iter::once(0)).collect();
+            let r = RegSetValueExW(
+                hkey,
+                val_name,
+                0,
+                REG_SZ,
+                wide_data.as_ptr() as _,
+                (wide_data.len() * 2) as u32,
+            );
+            if r == 0 {
+                Ok(())
+            } else {
+                Err(format!("RegSetValueExW failed with code {}", r))
+            }
+        } else {
+            let r = RegDeleteValueW(hkey, val_name);
+            if r == 0 || r == 2 {
+                Ok(())
+            } else {
+                Err(format!("RegDeleteValueW failed with code {}", r))
+            }
+        };
+
+        RegCloseKey(hkey);
+        res
+    }
+}
+
+#[cfg(not(windows))]
+pub fn register_autostart(_enable: bool) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_enumerate_processes_runs_without_panic() {
+        let procs = enumerate_processes();
+        assert!(procs.is_ok());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_register_autostart_toggle() {
+        let res = register_autostart(false);
+        assert!(res.is_ok(), "Disabling autostart should succeed: {:?}", res);
+    }
+}
