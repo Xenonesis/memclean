@@ -269,16 +269,29 @@ fn register_autostart(enable: bool) {
 fn main() {
     let _ = privileges::enable_memory_privileges();
     let args: Vec<String> = env::args().collect();
+    let config = AppConfig::load();
 
-    if args.len() > 1 {
-        if args.iter().any(|a| a == "--minimized") {
-            #[cfg(windows)]
-            {
-                memclean::ui::tray::run_application(true);
+    let is_minimized = args.iter().any(|a| a == "--minimized");
+    let is_gui_mode = args.len() <= 1 || args.iter().skip(1).all(|a| a == "--minimized");
+
+    if is_gui_mode {
+        if !privileges::is_elevated() && config.general.auto_elevate {
+            match privileges::relaunch_as_admin(&args[1..]) {
+                Ok(()) => return,
+                Err(e) => {
+                    eprintln!("Auto-elevation notice: Continuing in standard user mode ({})", e);
+                }
             }
-            return;
         }
 
+        #[cfg(windows)]
+        {
+            memclean::ui::tray::run_application(is_minimized);
+        }
+        return;
+    }
+
+    if args.len() > 1 {
         #[cfg(windows)]
         unsafe {
             use windows_sys::Win32::System::Console::{
@@ -314,7 +327,6 @@ fn main() {
         let silent = args.iter().any(|a| a == "--silent" || a == "-s");
         SILENT.store(silent, Ordering::Relaxed);
 
-        let config = AppConfig::load();
 
         if args.iter().any(|a| a == "--help" || a == "-h") {
             print_help();
