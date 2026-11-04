@@ -36,6 +36,32 @@ fn print_line(msg: &str) {
     }
 }
 
+static RUNNING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+unsafe extern "system" fn console_ctrl_handler(ctrl_type: u32) -> i32 {
+    if ctrl_type == 0 || ctrl_type == 1 || ctrl_type == 2 {
+        RUNNING.store(false, std::sync::atomic::Ordering::SeqCst);
+        1
+    } else {
+        0
+    }
+}
+
+fn wait_for_ctrl_c(release_msg: &str) {
+    RUNNING.store(true, std::sync::atomic::Ordering::SeqCst);
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
+        SetConsoleCtrlHandler(Some(console_ctrl_handler), 1);
+    }
+    while RUNNING.load(std::sync::atomic::Ordering::SeqCst) {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    if !release_msg.is_empty() {
+        print_line(release_msg);
+    }
+}
+
 #[derive(serde::Serialize)]
 struct JsonStatsOutput {
     timestamp: u64,
@@ -193,7 +219,7 @@ fn print_help() {
     print_line("      --standby             Purge standby list only");
     print_line("      --combine             Run kernel physical page combining (RAM deduplication)");
     print_line("      --working-sets        Trim working sets of all non-protected processes");
-    print_line("      --timer-res <TARGET>  Set timer resolution: 0.5, 1.0, or default (ms)");
+    print_line("      --timer-res <TARGET> [--wait|-w]  Set timer resolution: 0.5, 1.0, or default (ms) [locks with --wait]");
     print_line("      --stats, --status     Print current memory and system statistics");
     print_line("      --json                Output statistics in machine-readable JSON format");
     print_line("      --network-status      Print current Windows TCP and multimedia network throttling state");
@@ -205,7 +231,7 @@ fn print_help() {
     print_line("      --cpu-unpark          Unpark 100% of CPU cores (CPMINCORES 100) for zero-latency burst performance");
     print_line("      --cpu-restore-parking Reset CPU core parking behavior to Windows default");
     print_line("      --telemetry           Sample 1-second kernel hard page faults, disk I/O, and stutter risk");
-    print_line("      --hud                 Launch standalone zero-injection gaming HUD micro-overlay");
+    print_line("      --hud                 Launch standalone zero-injection gaming HUD micro-overlay (Ctrl+C to close)");
     print_line("  -s, --silent              Suppress console text output");
     print_line("      --autostart           Register elevated auto-start on Windows login");
     print_line("      --no-autostart        Remove elevated auto-start on Windows login");
@@ -218,7 +244,8 @@ fn print_help() {
     print_line("  memclean.exe --standby");
     print_line("  memclean.exe --combine");
     print_line("  memclean.exe --working-sets");
-    print_line("  memclean.exe --timer-res 0.5");
+    print_line("  memclean.exe --timer-res 0.5 --wait");
+    print_line("  memclean.exe --hud");
     print_line("  memclean.exe --stats");
     print_line("  memclean.exe --stats --json");
 }
@@ -234,6 +261,7 @@ fn register_autostart(enable: bool) {
         }
         Err(e) => {
             print_line(&format!("Startup registration failed: {}", e));
+            std::process::exit(1);
         }
     }
 }
@@ -332,6 +360,7 @@ fn main() {
                 print_line("Standby list purged successfully.");
             } else {
                 print_line("Failed to purge standby list (requires Administrator privileges).");
+                std::process::exit(1);
             }
             return;
         }
@@ -346,8 +375,9 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Page combining failed: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
 
@@ -406,8 +436,9 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error applying network optimization: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
 
@@ -422,8 +453,9 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error restoring network settings: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
         if args.iter().any(|a| a == "--vram" || a == "--gpu-status") {
@@ -498,8 +530,9 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error unparking CPU cores: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
 
@@ -510,8 +543,9 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error restoring CPU core parking: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
 
@@ -539,17 +573,22 @@ fn main() {
                 }
                 Err(e) => {
                     print_line(&format!("Error collecting telemetry: {}", e));
+                    std::process::exit(1);
                 }
-            }
+            };
             return;
         }
 
         if args.iter().any(|a| a == "--hud") {
-            print_line("Launching MemClean Gaming HUD overlay (Ctrl+Shift+O to toggle)...");
+            print_line("=== MemClean Zero-Injection Gaming HUD Micro-Overlay ===");
+            print_line("  - Hotkey    : Ctrl + Shift + O (Toggle HUD On / Off)");
+            print_line("  - Position  : Top-Right of active display (Click-through, Anti-Cheat Safe)");
+            print_line("Running HUD service in foreground. Press Ctrl+C to terminate...");
             #[cfg(windows)]
             {
                 memclean::ui::hud::show_hud();
-                std::thread::sleep(std::time::Duration::from_secs(10));
+                wait_for_ctrl_c("\nGaming HUD closed.");
+                memclean::ui::hud::hide_hud();
             }
             return;
         }
@@ -568,27 +607,56 @@ fn main() {
                     "default" | "def" => Some(memclean::core::timer_res::TimerResolutionMode::Default),
                     _ => None,
                 };
-
                 match mode {
                     Some(m) => {
+                        let mut cfg = AppConfig::load();
+                        match m {
+                            memclean::core::timer_res::TimerResolutionMode::HalfMs => {
+                                cfg.tuning.timer_resolution_enabled = true;
+                                cfg.tuning.timer_resolution_mode = "0.5ms".to_string();
+                            }
+                            memclean::core::timer_res::TimerResolutionMode::OneMs => {
+                                cfg.tuning.timer_resolution_enabled = true;
+                                cfg.tuning.timer_resolution_mode = "1.0ms".to_string();
+                            }
+                            memclean::core::timer_res::TimerResolutionMode::Default => {
+                                cfg.tuning.timer_resolution_enabled = false;
+                                cfg.tuning.timer_resolution_mode = "default".to_string();
+                            }
+                        }
+                        if let Err(e) = cfg.save() {
+                            print_line(&format!("Warning: Failed to persist timer settings to config: {}", e));
+                        } else {
+                            print_line(&format!("Timer resolution '{}' saved to configuration.", target));
+                        }
+
+                        let wait_mode = args.iter().any(|a| a == "--wait" || a == "-w");
                         let mut guard = memclean::core::timer_res::TimerResolutionGuard::new();
                         match guard.set_mode(m) {
                             Ok(()) => {
                                 let cur = memclean::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
                                 print_line(&format!("Active timer resolution: {:.3} ms", cur));
-                                std::mem::forget(guard);
+                                if wait_mode {
+                                    print_line("Locking timer resolution in foreground. Press Ctrl+C to release and exit...");
+                                    wait_for_ctrl_c("\nReleased scheduler timer resolution.");
+                                } else {
+                                    print_line("Tip: Run with '--wait' or '-w' to keep timer resolution locked in foreground.");
+                                }
                             }
                             Err(e) => {
                                 print_line(&format!("Failed to set timer resolution: {}", e));
+                                std::process::exit(1);
                             }
                         }
                     }
                     None => {
                         print_line(&format!("Invalid timer resolution target '{}'. Valid options: 0.5, 1.0, default", target));
+                        std::process::exit(1);
                     }
                 }
             } else {
                 print_line("Error: --timer-res requires a target: 0.5, 1.0, or default");
+                std::process::exit(1);
             }
             return;
         }

@@ -13,6 +13,13 @@ fn test_timer_resolution_guard_lifecycle() {
     let cur = TimerResolutionGuard::get_current_resolution_ms();
     assert!(cur <= 1.05);
 
+    let res_half = guard.set_mode(TimerResolutionMode::HalfMs);
+    assert!(res_half.is_ok());
+    assert_eq!(guard.current_mode(), TimerResolutionMode::HalfMs);
+
+    let cur_half = TimerResolutionGuard::get_current_resolution_ms();
+    assert!(cur_half <= 0.6);
+
     guard.revert();
     assert_eq!(guard.current_mode(), TimerResolutionMode::Default);
 }
