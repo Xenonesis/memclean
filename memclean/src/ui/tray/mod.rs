@@ -1,14 +1,19 @@
-use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
+pub mod dashboard;
+pub mod icon;
+
+pub use dashboard::calculate_memory_bar_segments;
+pub use icon::{create_percent_icon, create_percent_icon_with_config, format_tray_tooltip, load_embedded_icon};
+
+use crate::config::{AppConfig, TrayClickAction};
 use crate::core::memory;
 use crate::core::process::get_top_memory_processes;
 use crate::engine::cleaner;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
-    BeginPaint, EndPaint, InvalidateRect, PAINTSTRUCT,
-    CreateBitmap, CreateCompatibleDC, CreateDIBSection, CreateFontW, CreatePen, CreateSolidBrush,
-    DeleteDC, DeleteObject, DrawTextW, FillRect, GetStockObject, LineTo, MoveToEx, RoundRect, SelectObject, SetBkMode,
-    SetTextColor, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, FW_BOLD,
-    NULL_PEN, PS_SOLID, TRANSPARENT, DT_CENTER, DT_RIGHT, DT_SINGLELINE, DT_VCENTER,
+    BeginPaint, CreateFontW, CreatePen, CreateSolidBrush, DeleteObject, DrawTextW, EndPaint,
+    FillRect, GetStockObject, InvalidateRect, LineTo, MoveToEx, RoundRect, SelectObject, SetBkMode,
+    SetTextColor, PAINTSTRUCT, DT_CENTER, DT_RIGHT, DT_SINGLELINE, DT_VCENTER, NULL_PEN, PS_SOLID,
+    TRANSPARENT,
 };
 use windows_sys::Win32::UI::Shell::{
     ShellExecuteW, Shell_NotifyIconW, NOTIFYICONDATAW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_INFO,
@@ -16,81 +21,20 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateIconFromResourceEx, CreateIconIndirect, CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow,
-    DispatchMessageW, DrawIconEx, FindWindowW, GetClientRect, GetCursorPos, GetDlgItem, GetMessageW,
-    IsWindowVisible, LoadIconW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW, SendMessageW,
-    SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, SystemParametersInfoW, TrackPopupMenu,
-    BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW,
-    DI_NORMAL, GetDlgCtrlID, ICONINFO, IDNO, IDYES, MB_ICONINFORMATION, MB_YESNOCANCEL, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
-    SW_HIDE, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, TPM_BOTTOMALIGN, TPM_RIGHTALIGN,
-    WM_CLOSE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY,
-    WM_DRAWITEM, WM_ERASEBKGND, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP,
-    WM_SETFONT, WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD,
-    WS_MINIMIZEBOX, WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
+    CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow, DispatchMessageW, DrawIconEx,
+    FindWindowW, GetClientRect, GetCursorPos, GetDlgCtrlID, GetDlgItem, GetMessageW,
+    IsWindowVisible, LoadIconW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW,
+    SendMessageW, SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, SystemParametersInfoW,
+    TrackPopupMenu, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW, DI_NORMAL, IDNO,
+    IDYES, MB_ICONINFORMATION, MB_YESNOCANCEL, MSG, SC_MINIMIZE, SPI_GETWORKAREA, SW_HIDE,
+    SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_CLOSE, WM_COMMAND,
+    WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY, WM_DRAWITEM, WM_ERASEBKGND,
+    WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP, WM_SETFONT, WM_SETICON,
+    WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_MINIMIZEBOX,
+    WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT};
-use windows_sys::Win32::UI::WindowsAndMessaging::HICON;
 
-const EMBEDDED_ICO: &[u8] = include_bytes!("../../memclean.ico");
-
-pub fn load_embedded_icon(desired_size: u32) -> HICON {
-    unsafe {
-        if EMBEDDED_ICO.len() < 6 {
-            return std::ptr::null_mut();
-        }
-        let count = u16::from_le_bytes([EMBEDDED_ICO[4], EMBEDDED_ICO[5]]) as usize;
-        let mut best_offset = 0usize;
-        let mut best_size = 0usize;
-        let mut best_dim = 0u32;
-        let mut best_diff = i32::MAX;
-
-        for i in 0..count {
-            let entry_off = 6 + i * 16;
-            if entry_off + 16 > EMBEDDED_ICO.len() {
-                break;
-            }
-            let raw_w = EMBEDDED_ICO[entry_off];
-            let dim = if raw_w == 0 { 256 } else { raw_w as u32 };
-            let size = u32::from_le_bytes([
-                EMBEDDED_ICO[entry_off + 8],
-                EMBEDDED_ICO[entry_off + 9],
-                EMBEDDED_ICO[entry_off + 10],
-                EMBEDDED_ICO[entry_off + 11],
-            ]) as usize;
-            let offset = u32::from_le_bytes([
-                EMBEDDED_ICO[entry_off + 12],
-                EMBEDDED_ICO[entry_off + 13],
-                EMBEDDED_ICO[entry_off + 14],
-                EMBEDDED_ICO[entry_off + 15],
-            ]) as usize;
-
-            let diff = (dim as i32 - desired_size as i32).abs();
-            if diff < best_diff {
-                best_diff = diff;
-                best_dim = dim;
-                best_offset = offset;
-                best_size = size;
-            }
-        }
-
-        if best_size > 0 && best_offset + best_size <= EMBEDDED_ICO.len() {
-            let res_bytes = &EMBEDDED_ICO[best_offset..best_offset + best_size];
-            let hicon = CreateIconFromResourceEx(
-                res_bytes.as_ptr(),
-                best_size as u32,
-                1,
-                0x00030000,
-                best_dim as i32,
-                best_dim as i32,
-                0,
-            );
-            if !hicon.is_null() {
-                return hicon;
-            }
-        }
-        std::ptr::null_mut()
-    }
-}
 #[repr(C)]
 #[allow(non_snake_case, dead_code)]
 struct DRAWITEMSTRUCT {
@@ -123,129 +67,6 @@ const HOTKEY_HUD_ID: i32 = 2002;
 const PROCESS_TIMER_ID: usize = 1002;
 const TIMER_ID: usize = 1001;
 
-pub fn create_percent_icon(percent: u32) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
-    let cfg = get_config();
-    create_percent_icon_with_config(percent, &cfg.tray)
-}
-
-pub fn create_percent_icon_with_config(
-    percent: u32,
-    tray_cfg: &crate::config::TrayConfig,
-) -> windows_sys::Win32::UI::WindowsAndMessaging::HICON {
-    unsafe {
-        if tray_cfg.style == TrayStyle::Logo {
-            let logo_icon = load_embedded_icon(16);
-            if !logo_icon.is_null() {
-                return logo_icon;
-            }
-            let hinstance = windows_sys::Win32::System::LibraryLoader::GetModuleHandleW(std::ptr::null());
-            let app_icon = LoadIconW(hinstance, 1 as _);
-            if !app_icon.is_null() {
-                return app_icon;
-            }
-        }
-
-        let hdc = CreateCompatibleDC(std::ptr::null_mut());
-
-        let mut bmi: BITMAPINFO = std::mem::zeroed();
-        bmi.bmiHeader.biSize = std::mem::size_of::<BITMAPINFOHEADER>() as u32;
-        bmi.bmiHeader.biWidth = 16;
-        bmi.bmiHeader.biHeight = -16; // Top-down DIB so row 0 is top
-        bmi.bmiHeader.biPlanes = 1;
-        bmi.bmiHeader.biBitCount = 32;
-        bmi.bmiHeader.biCompression = BI_RGB;
-
-        let mut bits: *mut std::ffi::c_void = std::ptr::null_mut();
-        let hbm_color = CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut bits, std::ptr::null_mut(), 0);
-
-        let old_bm = SelectObject(hdc, hbm_color);
-
-        // Text color in BGR format
-        let text_color = match tray_cfg.color_mode {
-            TrayColorMode::Monochrome => 0x00FFFFFF, // Crisp White
-            TrayColorMode::Dynamic => {
-                if percent < 70 {
-                    0x005EC522 // Mint/Forest Green #22C55E (BGR: 0x5E, 0xC5, 0x22)
-                } else if percent < 85 {
-                    0x000B9EF5 // Warm Amber #F59E0B (BGR: 0x0B, 0x9E, 0xF5)
-                } else {
-                    0x004444EF // Carmine Coral #EF4444 (BGR: 0x44, 0x44, 0xEF)
-                }
-            }
-        };
-
-        if tray_cfg.style == TrayStyle::Capsule {
-            // Draw a rounded capsule container
-            let capsule_brush = CreateSolidBrush(0x00241E18); // Dark Slate #181E24
-            let capsule_pen = CreatePen(PS_SOLID as i32, 1, 0x0041342A); // Border #2A3441
-            let old_brush = SelectObject(hdc, capsule_brush);
-            let old_pen = SelectObject(hdc, capsule_pen);
-            RoundRect(hdc, 0, 1, 16, 15, 6, 6);
-            SelectObject(hdc, old_brush);
-            SelectObject(hdc, old_pen);
-            DeleteObject(capsule_brush);
-            DeleteObject(capsule_pen);
-        }
-
-        SetBkMode(hdc, TRANSPARENT as i32);
-        SetTextColor(hdc, text_color);
-
-        let font = CreateFontW(
-            -11, 0, 0, 0, FW_BOLD as i32, 0, 0, 0, 1, 0, 0, 5, 0,
-            windows_sys::w!("Segoe UI"),
-        );
-        let old_font = SelectObject(hdc, font);
-
-        let mut rect = RECT {
-            left: 0,
-            top: 0,
-            right: 16,
-            bottom: 16,
-        };
-        let text = format!("{:02}", percent.min(99));
-        let wide: Vec<u16> = text.encode_utf16().collect();
-        DrawTextW(hdc, wide.as_ptr(), wide.len() as i32, &mut rect, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
-        SelectObject(hdc, old_font);
-        DeleteObject(font);
-
-        // Build 1-bit transparency mask (1 = transparent, 0 = opaque)
-        let mut mask_bytes = [0xFFu8; 32];
-        if !bits.is_null() {
-            let pixels = std::slice::from_raw_parts_mut(bits as *mut u32, 256);
-            for y in 0..16 {
-                for x in 0..16 {
-                    let idx = y * 16 + x;
-                    if (pixels[idx] & 0x00FFFFFF) != 0 {
-                        let byte_idx = y * 2 + (x / 8);
-                        let bit_idx = 7 - (x % 8);
-                        mask_bytes[byte_idx] &= !(1 << bit_idx);
-                        pixels[idx] |= 0xFF000000; // Alpha 255
-                    }
-                }
-            }
-        }
-
-        let hbm_mask = CreateBitmap(16, 16, 1, 1, mask_bytes.as_ptr() as _);
-
-        SelectObject(hdc, old_bm);
-        DeleteDC(hdc);
-
-        let mut icon_info = ICONINFO {
-            fIcon: 1,
-            xHotspot: 0,
-            yHotspot: 0,
-            hbmMask: hbm_mask,
-            hbmColor: hbm_color,
-        };
-
-        let icon = CreateIconIndirect(&mut icon_info);
-        DeleteObject(hbm_color);
-        DeleteObject(hbm_mask);
-
-        icon
-    }
-}
 
 const BST_CHECKED: usize = 1;
 const BST_UNCHECKED: usize = 0;
@@ -274,27 +95,6 @@ unsafe fn is_checked(hwnd: HWND, id: i32) -> bool {
     }
 }
 
-pub fn calculate_memory_bar_segments(
-    total_mb: u64,
-    used_mb: u64,
-    standby_mb: u64,
-    modified_mb: u64,
-    bar_width: i32,
-) -> (i32, i32, i32, i32) {
-    if total_mb == 0 || bar_width <= 0 {
-        return (0, 0, 0, bar_width.max(0));
-    }
-    let in_use_w = (((used_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
-    let standby_w = (((standby_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
-    let mod_w = (((modified_mb as u128) * (bar_width as u128)) / (total_mb as u128)) as i32;
-    let allocated = in_use_w + standby_w + mod_w;
-    let remaining_w = (bar_width - allocated).max(0);
-    (in_use_w, standby_w, mod_w, remaining_w)
-}
-
-pub fn format_tray_tooltip(percent: u32, standby_mb: u64, timer_res_ms: f32) -> String {
-    format!("MemClean: {}% | Standby: {}MB | Timer: {:.1}ms", percent, standby_mb, timer_res_ms)
-}
 
 unsafe fn update_stats_display(hwnd: HWND) {
     if let Ok(stats) = memory::get_extended_memory_stats() {
@@ -1446,7 +1246,7 @@ mod tests {
 
     #[test]
     fn test_create_icon_not_null() {
-        use crate::config::TrayConfig;
+        use crate::config::{TrayColorMode, TrayConfig, TrayStyle};
         let cfg = TrayConfig::default();
         let icon = create_percent_icon_with_config(42, &cfg);
         assert!(!icon.is_null());

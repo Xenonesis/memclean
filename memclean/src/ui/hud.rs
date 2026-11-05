@@ -341,7 +341,6 @@ unsafe fn get_active_process_name() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_hud_dimensions_and_alpha() {
