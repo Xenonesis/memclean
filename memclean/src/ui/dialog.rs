@@ -262,7 +262,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         }
 
         let lbl_note = CreateWindowExW(
-            0, windows_sys::w!("STATIC"), windows_sys::w!("(Range: 10% - 95%, Default: 80%)"),
+            0, windows_sys::w!("STATIC"), windows_sys::w!("(Range: 50% - 95%, Default: 80%)"),
             WS_CHILD | WS_VISIBLE,
             30, 112, 300, 16, hwnd, 208 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
@@ -283,7 +283,7 @@ pub fn show_settings_dialog(_parent: HWND) {
         }
 
         let edit_timer = CreateWindowExW(
-            0, windows_sys::w!("EDIT"), windows_sys::w!("15"),
+            0, windows_sys::w!("EDIT"), windows_sys::w!("300"),
             WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
             114, 188, 50, 22, hwnd, 211 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
@@ -301,9 +301,9 @@ pub fn show_settings_dialog(_parent: HWND) {
         }
 
         let lbl_note2 = CreateWindowExW(
-            0, windows_sys::w!("STATIC"), windows_sys::w!("(0 = Continuous, Range: 1 - 300s)"),
+            0, windows_sys::w!("STATIC"), windows_sys::w!("(Range: 60s - 3600s, Default: 300s)"),
             WS_CHILD | WS_VISIBLE,
-            236, 190, 218, 18, hwnd, 213 as _, std::ptr::null_mut(), std::ptr::null_mut(),
+            236, 190, 240, 18, hwnd, 213 as _, std::ptr::null_mut(), std::ptr::null_mut(),
         );
         if !lbl_note2.is_null() && !D_FONT_SUBHEADER.is_null() {
             SendMessageW(lbl_note2, WM_SETFONT, D_FONT_SUBHEADER as WPARAM, 1);

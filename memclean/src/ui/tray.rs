@@ -768,6 +768,12 @@ pub fn run_application(start_minimized: bool) {
 
         SetTimer(hwnd, TIMER_ID, 1000, None);
         SetTimer(hwnd, PROCESS_TIMER_ID, 5000, None);
+        if let Ok(mut lock) = LAST_PERIODIC_CLEAN.lock() {
+            *lock = Some(Instant::now());
+        }
+        if let Ok(mut lock) = LAST_AUTO_CLEAN.lock() {
+            *lock = Some(Instant::now());
+        }
 
         // Register global hotkey Ctrl+Alt+M if enabled.
         if !sync_global_hotkey(hwnd, get_config().general.global_hotkey_enabled) {
@@ -884,53 +890,48 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
         }
         WM_TIMER => {
             if wparam as usize == PROCESS_TIMER_ID {
-                update_top_processes(hwnd);
+                if IsWindowVisible(hwnd) != 0 {
+                    update_top_processes(hwnd);
+                }
                 return 0;
             }
             let config = get_config();
             if let Ok(stats) = memory::get_memory_stats() {
                 let now = Instant::now();
 
-                // 1. Threshold-based auto-clean (debounced to 60s cooldown to prevent continuous 1Hz thrashing)
+                // 1. Threshold-based auto-clean (debounced to 120s cooldown to prevent repeated thrashing)
                 let can_auto_clean = {
                     let lock = LAST_AUTO_CLEAN.lock().unwrap();
-                    lock.map_or(true, |last| now.duration_since(last).as_secs() >= 60)
+                    lock.map_or(false, |last| now.duration_since(last).as_secs() >= 120)
                 };
 
                 if config.triggers.auto_threshold_enabled
                     && stats.used_percent >= config.triggers.threshold_percent
                     && can_auto_clean
                 {
-                    cleaner::perform_clean(&config, false);
+                    cleaner::perform_auto_clean(&config);
                     if let Ok(mut lock) = LAST_AUTO_CLEAN.lock() {
                         *lock = Some(now);
                     }
                     set_text(hwnd, 103, "Status: Auto-cleaned (exceeded threshold).");
                 }
 
-                // 2. Scheduled timer-based auto-clean (continuous or periodic interval)
+                // 2. Scheduled timer-based auto-clean (periodic interval, minimum 60s)
                 if config.triggers.auto_timer_enabled {
-                    let sec = config.triggers.timer_seconds;
-                    let should_timer_clean = if sec == 0 {
-                        // 0 = Continuous mode: runs every 1-second tick without time limit
-                        true
-                    } else {
+                    let sec = config.triggers.timer_seconds.max(60);
+                    let should_timer_clean = {
                         let lock = LAST_PERIODIC_CLEAN.lock().unwrap();
-                        lock.map_or(true, |last| now.duration_since(last).as_secs() >= (sec as u64))
+                        lock.map_or(false, |last| now.duration_since(last).as_secs() >= (sec as u64))
                     };
 
                     if should_timer_clean {
-                        cleaner::perform_clean(&config, false);
+                        cleaner::perform_auto_clean(&config);
                         if let Ok(mut lock) = LAST_PERIODIC_CLEAN.lock() {
                             *lock = Some(now);
                         }
-                        if sec == 0 {
-                            set_text(hwnd, 103, "Status: Auto-cleaned (continuous mode).");
-                        } else {
-                            let msg = format!("Status: Auto-cleaned (timer: {}s).\0", sec);
-                            let wide: Vec<u16> = msg.encode_utf16().collect();
-                            SetWindowTextW(GetDlgItem(hwnd, 103), wide.as_ptr());
-                        }
+                        let msg = format!("Status: Auto-cleaned (timer: {}s).\0", sec);
+                        let wide: Vec<u16> = msg.encode_utf16().collect();
+                        SetWindowTextW(GetDlgItem(hwnd, 103), wide.as_ptr());
                     }
                 }
                 let ext_stats = G_EXT_STATS.lock().ok().and_then(|lock| *lock);

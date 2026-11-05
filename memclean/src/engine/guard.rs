@@ -76,7 +76,7 @@ pub fn is_protected_process(
         return true;
     }
 
-    // 1. Whitelist of Windows core system critical processes
+    // 1. Whitelist of Windows core system & shell critical processes (MUST NEVER be trimmed to prevent OS stutter/lag)
     const SYSTEM_WHITELIST: &[&str] = &[
         "system",
         "registry",
@@ -88,8 +88,17 @@ pub fn is_protected_process(
         "dwm.exe",
         "fontdrvhost.exe",
         "memclean.exe",
+        "explorer.exe",
+        "svchost.exe",
+        "audiodg.exe",
+        "sihost.exe",
+        "taskhostw.exe",
+        "ctfmon.exe",
+        "shellexperiencehost.exe",
+        "startmenuexperiencehost.exe",
+        "searchhost.exe",
+        "searchindexer.exe",
     ];
-
     if SYSTEM_WHITELIST.contains(&lower_name.as_str()) {
         return true;
     }

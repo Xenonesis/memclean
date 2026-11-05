@@ -88,6 +88,34 @@ pub fn perform_clean(config: &AppConfig, force_aggressive: bool) -> CleanResult 
 
     result
 }
+/// Safe, zero-stutter background clean.
+/// Only purges Standby List and optionally trims file cache.
+/// NEVER flushes modified pages to disk (avoids SSD I/O spike / 100% disk queue).
+/// NEVER trims working sets of running applications in the background (avoids UI freezing / hard page-fault latency).
+pub fn perform_auto_clean(config: &AppConfig) -> CleanResult {
+    let mut result = CleanResult::default();
+
+    // 1. Purge Standby List (zero disk I/O, reclaims gigabytes of cached pages instantly)
+    if config.policy.purge_standby {
+        if ntdll::purge_standby_list().is_ok() {
+            result.standby_purged = true;
+        }
+    } else if config.policy.purge_low_priority_standby {
+        if ntdll::purge_low_priority_standby_list().is_ok() {
+            result.standby_purged = true;
+        }
+    }
+
+    // 2. Trim System File Cache (if enabled)
+    if config.policy.trim_file_cache {
+        if ntdll::trim_system_file_cache().is_ok() {
+            result.file_cache_trimmed = true;
+        }
+    }
+
+    result
+}
+
 
 pub fn purge_standby_only() -> bool {
     ntdll::purge_standby_list().is_ok()

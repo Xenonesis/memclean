@@ -50,6 +50,10 @@ impl Default for TrayConfig {
 fn default_true() -> bool {
     true
 }
+fn default_false() -> bool {
+    false
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct GeneralConfig {
@@ -111,9 +115,9 @@ impl Default for PolicyConfig {
             preset: Preset::SmartSafe,
             purge_standby: true,
             purge_low_priority_standby: false,
-            flush_modified: true,
+            flush_modified: false,
             trim_file_cache: true,
-            trim_working_sets: true,
+            trim_working_sets: false,
             game_guard_enabled: true,
         }
     }
@@ -124,7 +128,7 @@ fn default_threshold_percent() -> u32 {
 }
 
 fn default_timer_seconds() -> u32 {
-    15
+    300 // 5 minutes (safe non-thrashing interval)
 }
 
 fn default_islc_mb() -> u64 {
@@ -144,15 +148,11 @@ pub fn clamp_idle_seconds(val: u32) -> u32 {
 }
 
 pub fn clamp_threshold_percent(percent: u32) -> u32 {
-    percent.clamp(10, 95)
+    percent.clamp(50, 95)
 }
 
 pub fn clamp_timer_seconds(sec: u32) -> u32 {
-    if sec == 0 {
-        0
-    } else {
-        sec.clamp(1, 300)
-    }
+    sec.clamp(60, 3600)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -163,7 +163,7 @@ pub struct TriggersConfig {
     pub auto_threshold_enabled: bool,
     #[serde(default = "default_threshold_percent")]
     pub threshold_percent: u32,
-    #[serde(default = "default_true")]
+    #[serde(default = "default_false")]
     pub auto_timer_enabled: bool,
     #[serde(default = "default_timer_seconds")]
     pub timer_seconds: u32,
@@ -340,6 +340,35 @@ impl AppConfig {
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
         PathBuf::from(appdata).join("MemClean").join("config.toml")
     }
+    pub fn sanitize(&mut self) -> bool {
+        let mut modified = false;
+
+        if self.triggers.timer_seconds < 60 {
+            self.triggers.timer_seconds = 300;
+            self.triggers.auto_timer_enabled = false;
+            modified = true;
+        } else {
+            let clamped_sec = clamp_timer_seconds(self.triggers.timer_seconds);
+            if self.triggers.timer_seconds != clamped_sec {
+                self.triggers.timer_seconds = clamped_sec;
+                modified = true;
+            }
+        }
+
+        if self.triggers.threshold_percent < 50 {
+            self.triggers.threshold_percent = 80;
+            modified = true;
+        } else {
+            let clamped_thresh = clamp_threshold_percent(self.triggers.threshold_percent);
+            if self.triggers.threshold_percent != clamped_thresh {
+                self.triggers.threshold_percent = clamped_thresh;
+                modified = true;
+            }
+        }
+
+        modified
+    }
+
 
     pub fn load() -> Self {
         let path = Self::config_path();
@@ -350,6 +379,9 @@ impl AppConfig {
                         if !content.contains("timer_seconds") {
                             cfg.triggers.timer_seconds = min * 60;
                         }
+                    }
+                    if cfg.sanitize() {
+                        let _ = cfg.save();
                     }
                     return cfg;
                 }
@@ -389,7 +421,7 @@ mod tests {
     #[test]
     fn test_threshold_percent_customization_and_clamping() {
         assert_eq!(super::clamp_threshold_percent(80), 80);
-        assert_eq!(super::clamp_threshold_percent(5), 10);
+        assert_eq!(super::clamp_threshold_percent(10), 50); // Safe lower bound
         assert_eq!(super::clamp_threshold_percent(99), 95);
         assert_eq!(super::clamp_threshold_percent(72), 72);
 
@@ -402,18 +434,32 @@ mod tests {
 
     #[test]
     fn test_timer_seconds_customization_and_clamping() {
-        assert_eq!(super::clamp_timer_seconds(0), 0); // continuous
-        assert_eq!(super::clamp_timer_seconds(1), 1);
-        assert_eq!(super::clamp_timer_seconds(15), 15);
+        assert_eq!(super::clamp_timer_seconds(10), 60); // Safe minimum 60s
+        assert_eq!(super::clamp_timer_seconds(60), 60);
         assert_eq!(super::clamp_timer_seconds(300), 300);
-        assert_eq!(super::clamp_timer_seconds(999), 300);
+        assert_eq!(super::clamp_timer_seconds(5000), 3600); // Safe maximum 1h
 
         let mut config = AppConfig::default();
-        config.triggers.timer_seconds = 0;
+        config.triggers.timer_seconds = 300;
         let serialized = toml::to_string(&config).unwrap();
         let restored: AppConfig = toml::from_str(&serialized).unwrap();
-        assert_eq!(restored.triggers.timer_seconds, 0);
+        assert_eq!(restored.triggers.timer_seconds, 300);
+    }
 
+    #[test]
+    fn test_sanitize_prevents_system_freezes() {
+        let mut config = AppConfig::default();
+        config.triggers.timer_seconds = 0; // dangerous continuous mode
+        config.triggers.auto_timer_enabled = true;
+        config.triggers.threshold_percent = 10; // dangerous low threshold
+
+        assert!(config.sanitize());
+        assert_eq!(config.triggers.timer_seconds, 300);
+        assert!(!config.triggers.auto_timer_enabled); // auto-timer disabled for safety
+        assert_eq!(config.triggers.threshold_percent, 80);
+    }
+    #[test]
+    fn test_legacy_timer_fallback() {
         let legacy = r#"
 exclusions = ["explorer.exe"]
 
