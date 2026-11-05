@@ -301,8 +301,7 @@ fn main() {
             let is_redirected = !current_out.is_null()
                 && current_out != windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
 
-            if !is_redirected {
-                if AttachConsole(ATTACH_PARENT_PROCESS) != 0 {
+            if !is_redirected && AttachConsole(ATTACH_PARENT_PROCESS) != 0 {
                     use windows_sys::Win32::Storage::FileSystem::{
                         CreateFileW, FILE_GENERIC_WRITE, FILE_SHARE_READ, FILE_SHARE_WRITE,
                         OPEN_EXISTING,
@@ -321,7 +320,6 @@ fn main() {
                         SetStdHandle(STD_ERROR_HANDLE, conout);
                     }
                 }
-            }
         }
 
         let silent = args.iter().any(|a| a == "--silent" || a == "-s");

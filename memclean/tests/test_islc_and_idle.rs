@@ -35,8 +35,7 @@ fn test_islc_dual_conditions() {
 #[test]
 #[allow(unused_comparisons)]
 fn test_idle_clean_logic() {
-    let idle_sec = get_user_idle_seconds();
-    assert!(idle_sec >= 0);
+    let _idle_sec = get_user_idle_seconds();
 
     // If threshold is 0, never clean
     assert!(!should_idle_clean(0, false));
