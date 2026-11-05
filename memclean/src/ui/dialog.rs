@@ -1,3 +1,7 @@
+pub mod common;
+pub mod tab_system;
+pub mod tab_triggers;
+
 use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
