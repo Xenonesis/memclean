@@ -23,14 +23,14 @@ use windows_sys::Win32::Foundation::RECT;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     CreateWindowExW, DefWindowProcW, DestroyIcon, DestroyWindow, DispatchMessageW, DrawIconEx,
     FindWindowW, GetClientRect, GetCursorPos, GetDlgCtrlID, GetDlgItem, GetMessageW,
-    IsWindowVisible, LoadIconW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW,
-    SendMessageW, SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow, SystemParametersInfoW,
-    TrackPopupMenu, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW, DI_NORMAL, IDNO,
-    IDYES, MB_ICONINFORMATION, MB_YESNOCANCEL, MSG, SC_MINIMIZE, SPI_GETWORKAREA, SW_HIDE,
-    SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_CLOSE, WM_COMMAND,
-    WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY, WM_DRAWITEM, WM_ERASEBKGND,
-    WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP, WM_SETFONT, WM_SETICON,
-    WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_MINIMIZEBOX,
+    HICON, IsWindowVisible, LoadIconW, MessageBoxW, PostMessageW, PostQuitMessage, RegisterClassW,
+    RegisterWindowMessageW, SendMessageW, SetForegroundWindow, SetTimer, SetWindowTextW, ShowWindow,
+    SystemParametersInfoW, TrackPopupMenu, BM_GETCHECK, BM_SETCHECK, BS_AUTOCHECKBOX, BS_OWNERDRAW,
+    DI_NORMAL, IDNO, IDYES, MB_ICONINFORMATION, MB_YESNOCANCEL, MSG, SC_MINIMIZE, SPI_GETWORKAREA,
+    SW_HIDE, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, TPM_BOTTOMALIGN, TPM_RIGHTALIGN, WM_CLOSE,
+    WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG, WM_CTLCOLORSTATIC, WM_DESTROY, WM_DRAWITEM,
+    WM_ERASEBKGND, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_PAINT, WM_RBUTTONUP, WM_SETFONT,
+    WM_SETICON, WM_SYSCOMMAND, WM_TIMER, WM_USER, WNDCLASSW, WS_CAPTION, WS_CHILD, WS_MINIMIZEBOX,
     WS_OVERLAPPED, WS_SYSMENU, WS_VISIBLE,
 };
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{RegisterHotKey, UnregisterHotKey, MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT};
@@ -59,6 +59,9 @@ static mut G_FONT_BOLD: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::nul
 static mut G_FONT_SUBHEADER: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut G_FONT_STATS: windows_sys::Win32::Graphics::Gdi::HFONT = std::ptr::null_mut();
 static mut G_USED_PERCENT: u32 = 0;
+static mut G_LAST_TRAY_PERCENT: Option<u32> = None;
+static mut WM_TASKBAR_CREATED: u32 = 0;
+const TRAY_ICON_UID: u32 = 1;
 const WM_TRAYICON: u32 = WM_USER + 1;
 const WM_UPDATE_CHECK_RESULT: u32 = WM_USER + 2;
 const NIN_BALLOONUSERCLICK: u32 = 0x0405;
@@ -353,7 +356,7 @@ unsafe fn show_tray_notification(hwnd: HWND, title: &str, message: &str) {
     let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
     nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
     nid.hWnd = hwnd;
-    nid.uID = 1;
+    nid.uID = TRAY_ICON_UID;
     nid.uFlags = NIF_INFO;
     nid.dwInfoFlags = NIIF_INFO;
 
@@ -365,6 +368,55 @@ unsafe fn show_tray_notification(hwnd: HWND, title: &str, message: &str) {
     nid.szInfo[..copy_msg_len].copy_from_slice(&msg_wide[..copy_msg_len]);
 
     Shell_NotifyIconW(NIM_MODIFY, &nid);
+}
+
+/// Updates the dynamic system tray icon and tooltip with current RAM stats.
+/// If `force_refresh` is true or the memory percentage has changed, a new tray icon badge is rendered.
+unsafe fn update_tray_icon(hwnd: HWND, force_refresh: bool) {
+    let stats = match memory::get_memory_stats() {
+        Ok(s) => s,
+        Err(_) => return,
+    };
+    let config = get_config();
+    let cur_percent = stats.used_percent;
+    let percent_changed = G_LAST_TRAY_PERCENT != Some(cur_percent);
+
+    let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
+    nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+    nid.hWnd = hwnd;
+    nid.uID = TRAY_ICON_UID;
+    nid.uCallbackMessage = WM_TRAYICON;
+    nid.uFlags = NIF_MESSAGE | NIF_TIP;
+
+    let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+    let standby_mb = G_EXT_STATS.lock().ok().and_then(|lock| *lock).map_or(0, |s| s.standby_total_mb);
+    let tip = format!("{}\0", format_tray_tooltip(cur_percent, standby_mb, cur_res));
+    let tip_wide: Vec<u16> = tip.encode_utf16().collect();
+    let copy_len = tip_wide.len().min(nid.szTip.len());
+    nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
+
+    let mut new_icon: HICON = std::ptr::null_mut();
+    if force_refresh || percent_changed {
+        new_icon = create_percent_icon_with_config(cur_percent, &config.tray);
+        nid.hIcon = new_icon;
+        nid.uFlags |= NIF_ICON;
+    }
+
+    if Shell_NotifyIconW(NIM_MODIFY, &nid) == 0 {
+        // If modify failed (e.g. explorer restarted or icon missing), fallback to NIM_ADD
+        if new_icon.is_null() {
+            new_icon = create_percent_icon_with_config(cur_percent, &config.tray);
+        }
+        nid.hIcon = new_icon;
+        nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+        Shell_NotifyIconW(NIM_ADD, &nid);
+    }
+
+    G_LAST_TRAY_PERCENT = Some(cur_percent);
+
+    if !new_icon.is_null() {
+        DestroyIcon(new_icon);
+    }
 }
 
 pub fn run_tray_application() {
@@ -526,6 +578,9 @@ pub fn run_application(start_minimized: bool) {
         update_stats_display(hwnd);
         update_top_processes(hwnd);
 
+        // Register explorer taskbar restart message
+        WM_TASKBAR_CREATED = RegisterWindowMessageW(windows_sys::w!("TaskbarCreated"));
+
         // Setup Tray Icon
         let stats = memory::get_memory_stats().unwrap_or(memory::MemoryStats {
             total_phys_mb: 0,
@@ -534,17 +589,20 @@ pub fn run_application(start_minimized: bool) {
             used_percent: 50,
         });
 
-        let hicon = create_percent_icon(stats.used_percent);
+        let config = get_config();
+        let hicon = create_percent_icon_with_config(stats.used_percent, &config.tray);
         let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
         nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
         nid.hWnd = hwnd;
-        nid.uID = 1;
+        nid.uID = TRAY_ICON_UID;
         nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_INFO;
         nid.uCallbackMessage = WM_TRAYICON;
         nid.hIcon = hicon;
         nid.dwInfoFlags = NIIF_INFO;
 
-        let tip = format!("MemClean: {}% RAM Used\0", stats.used_percent);
+        let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
+        let standby_mb = G_EXT_STATS.lock().ok().and_then(|lock| *lock).map_or(0, |s| s.standby_total_mb);
+        let tip = format!("{}\0", format_tray_tooltip(stats.used_percent, standby_mb, cur_res));
         let tip_wide: Vec<u16> = tip.encode_utf16().collect();
         let copy_len = tip_wide.len().min(nid.szTip.len());
         nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
@@ -560,13 +618,16 @@ pub fn run_application(start_minimized: bool) {
         nid.szInfo[..copy_info_len].copy_from_slice(&info_wide[..copy_info_len]);
 
         Shell_NotifyIconW(NIM_ADD, &nid);
+        DestroyIcon(hicon);
+        G_LAST_TRAY_PERCENT = Some(stats.used_percent);
 
         if !start_minimized {
             ShowWindow(hwnd, SW_SHOW);
             SetForegroundWindow(hwnd);
         }
 
-        SetTimer(hwnd, TIMER_ID, 1000, None);
+        let interval_ms = (config.general.tray_update_interval_sec.clamp(1, 10) * 1000) as u32;
+        SetTimer(hwnd, TIMER_ID, interval_ms, None);
         SetTimer(hwnd, PROCESS_TIMER_ID, 5000, None);
         if let Ok(mut lock) = LAST_PERIODIC_CLEAN.lock() {
             *lock = Some(Instant::now());
@@ -590,12 +651,20 @@ pub fn run_application(start_minimized: bool) {
             DispatchMessageW(&msg);
         }
 
-        Shell_NotifyIconW(NIM_DELETE, &nid);
-        DestroyIcon(hicon);
+        let mut del_nid: NOTIFYICONDATAW = std::mem::zeroed();
+        del_nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+        del_nid.hWnd = hwnd;
+        del_nid.uID = TRAY_ICON_UID;
+        Shell_NotifyIconW(NIM_DELETE, &del_nid);
     }
 }
 
 unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if WM_TASKBAR_CREATED != 0 && msg == WM_TASKBAR_CREATED {
+        G_LAST_TRAY_PERCENT = None;
+        update_tray_icon(hwnd, true);
+        return 0;
+    }
     match msg {
         WM_TRAYICON => {
             let event = lparam as u32;
@@ -616,6 +685,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let freed = if after > before { after - before } else { 0 };
                     show_tray_notification(hwnd, "MemClean Optimization", &format!("Freed {} MB physical RAM.", freed));
                     update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
                 } else {
                     if IsWindowVisible(hwnd) != 0 {
                         ShowWindow(hwnd, SW_HIDE);
@@ -680,6 +750,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 set_text(hwnd, 103, &status);
                 show_tray_notification(hwnd, "MemClean Hotkey", &format!("Freed {} MB RAM.", freed));
                 update_stats_display(hwnd);
+                update_tray_icon(hwnd, true);
             } else if hotkey_id == HOTKEY_HUD_ID {
                 crate::ui::hud::toggle_hud();
                 let visible = crate::ui::hud::is_hud_visible();
@@ -783,24 +854,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 }
 
                 update_stats_display(hwnd);
-
-                let new_icon = create_percent_icon(stats.used_percent);
-                let mut nid: NOTIFYICONDATAW = std::mem::zeroed();
-                nid.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
-                nid.hWnd = hwnd;
-                nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
-                nid.uCallbackMessage = WM_TRAYICON;
-                nid.hIcon = new_icon;
-
-                let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
-                let standby_mb = ext_stats.map_or(0, |s| s.standby_total_mb);
-                let tip = format!("{}\0", format_tray_tooltip(stats.used_percent, standby_mb, cur_res));
-                let tip_wide: Vec<u16> = tip.encode_utf16().collect();
-                let copy_len = tip_wide.len().min(nid.szTip.len());
-                nid.szTip[..copy_len].copy_from_slice(&tip_wide[..copy_len]);
-
-                Shell_NotifyIconW(NIM_MODIFY, &nid);
-                DestroyIcon(new_icon);
+                update_tray_icon(hwnd, false);
             }
             0
         }
@@ -824,6 +878,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     };
                     set_text(hwnd, 103, &status_msg);
                     update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
 
                     if id == 502 {
                         show_tray_notification(hwnd, "MemClean Optimization", &format!("Freed {} MB physical RAM.", freed));
@@ -841,6 +896,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         }
                     }
                     update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
                 }
                 203 | 507 => { // Combine Pages
                     match cleaner::combine_pages_only() {
@@ -854,6 +910,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                         }
                     }
                     update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
                 }
                 508 => { // Toggle Timer Resolution
                     let cur_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
@@ -870,6 +927,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let updated_res = crate::core::timer_res::TimerResolutionGuard::get_current_resolution_ms();
                     set_text(hwnd, 103, &format!("Status: Timer resolution set to {:.3} ms.", updated_res));
                     InvalidateRect(hwnd, std::ptr::null(), 0);
+                    update_tray_icon(hwnd, false);
                 }
                 509 => { // Check for Updates...
                     set_text(hwnd, 103, "Status: Checking for updates...");
@@ -889,7 +947,10 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     } else {
                         set_text(hwnd, 103, "Status: Settings saved successfully.");
                     }
+                    let interval_ms = get_config().general.tray_update_interval_sec.clamp(1, 10) * 1000;
+                    SetTimer(hwnd, TIMER_ID, interval_ms, None);
                     update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
                 }
                 402 => { // Minimize to Tray
                     ShowWindow(hwnd, SW_HIDE);

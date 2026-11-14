@@ -74,7 +74,7 @@ pub struct GeneralConfig {
 }
 
 fn default_tray_update_interval_sec() -> u32 {
-    2
+    1
 }
 
 impl Default for GeneralConfig {
