@@ -11,8 +11,8 @@ fn main() {
         res.set("OriginalFilename", "memclean.exe");
         res.set("LegalCopyright", "Copyright (C) 2026 Xenonesis. All rights reserved.");
         res.set("CompanyName", "MemClean Open Source Project");
-        res.set("ProductVersion", "1.1.0");
-        res.set("FileVersion", "1.1.0.0");
+        res.set("ProductVersion", "1.1.1");
+        res.set("FileVersion", "1.1.1.0");
         let _ = res.compile();
     }
 }
