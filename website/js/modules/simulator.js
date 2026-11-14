@@ -240,13 +240,13 @@ export function initMemorySimulator() {
     }
     if (trayIcon) {
       if (state.percent < 70) {
-        trayIcon.style.backgroundColor = '#1F6C38';
+        trayIcon.style.backgroundColor = '#10B981';
         trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (Healthy)`);
       } else if (state.percent < 85) {
-        trayIcon.style.backgroundColor = '#855800';
+        trayIcon.style.backgroundColor = '#F59E0B';
         trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (Elevated)`);
       } else {
-        trayIcon.style.backgroundColor = '#9F2F2D';
+        trayIcon.style.backgroundColor = '#EF4444';
         trayIcon.setAttribute('title', `MemClean: ${state.trayNum}% RAM Used (High)`);
       }
     }
@@ -263,13 +263,13 @@ export function initMemorySimulator() {
       stepEl.classList.add('active');
       if (statusEl) {
         statusEl.textContent = customText || 'Running...';
-        statusEl.style.color = 'var(--pastel-blue-text)';
+        statusEl.style.color = 'var(--accent-cyan)';
       }
     } else if (status === 'done') {
       stepEl.classList.add('done');
       if (statusEl) {
         statusEl.textContent = customText || 'Done';
-        statusEl.style.color = 'var(--pastel-green-text)';
+        statusEl.style.color = 'var(--accent-emerald)';
       }
     } else {
       if (statusEl) {
@@ -322,7 +322,7 @@ export function initMemorySimulator() {
         cleanBtn.style.opacity = '1';
         if (logStatus) {
           logStatus.textContent = 'Completed Successfully';
-          logStatus.style.color = 'var(--pastel-green-text)';
+          logStatus.style.color = 'var(--accent-emerald)';
         }
         if (freedBadge) {
           if (freedText) freedText.textContent = '+7,800 MB Reclaimed';

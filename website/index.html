@@ -12,7 +12,7 @@
   <meta property="og:title" content="MemClean — Physical Memory Management for Windows">
   <meta property="og:description" content="Sub-500 KB, pure Rust memory optimizer with 5-tier NT kernel purging and zero-stutter foreground protection.">
   <meta property="og:url" content="https://xenonesis.github.io/memclean/">
-  <meta name="theme-color" content="#FBFBFA">
+  <meta name="theme-color" content="#080B10">
 
   <!-- Favicons and Web App Manifest -->
   <link rel="icon" href="favicon.ico" sizes="48x48">
@@ -20,10 +20,10 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
 
-  <!-- Typography: Newsreader & Geist Mono -->
+  <!-- Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="styles.css">
@@ -129,6 +129,18 @@
           </a>
         </div>
 
+        <!-- Quick Install Snippet -->
+        <div class="hero-quick-cmd" role="region" aria-label="Quick Install Command">
+          <span>Install via Cargo:</span>
+          <code>cargo install --git https://github.com/Xenonesis/memclean</code>
+          <button type="button" class="btn-icon-only btn-copy-snippet" data-copy="cargo install --git https://github.com/Xenonesis/memclean" aria-label="Copy Cargo install command" title="Copy command">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+
         <!-- Four Key Specs Ribbon -->
         <div class="stats-ribbon" role="region" aria-label="Key Performance Metrics">
           <div class="stat-item">
@@ -205,19 +217,19 @@
 
                 <div class="ram-legend">
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #2F3437;"></span>
+                    <span class="legend-color" style="background: #475569;"></span>
                     <span id="legend-active">Active Working Sets (5.1 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #D3D1C8;"></span>
+                    <span class="legend-color" style="background: #2563EB;"></span>
                     <span id="legend-standby">Standby Page Cache (6.1 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #E8D5CE;"></span>
+                    <span class="legend-color" style="background: #D97706;"></span>
                     <span id="legend-modified">Modified Dirty List (1.9 GB)</span>
                   </div>
                   <div class="legend-item">
-                    <span class="legend-color" style="background: #CDE3CE;"></span>
+                    <span class="legend-color" style="background: #10B981;"></span>
                     <span id="legend-free">Free Available RAM (2.9 GB)</span>
                   </div>
                 </div>
@@ -285,9 +297,13 @@
                 </div>
 
                 <div class="taskbar-mockup">
-                  <span style="font-size: 0.75rem; color: #787774; font-family: var(--font-mono);">System Notification Area</span>
+                  <span style="font-size: 0.75rem; color: #6B7280; font-family: var(--font-mono);">Windows 11 Notification Area</span>
                   
                   <div class="taskbar-tray">
+                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="color: #6B7280;" aria-hidden="true">
+                      <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
+
                     <!-- Dynamic GDI simulated Tray Icon -->
                     <div class="gdi-tray-icon" id="sim-tray-icon" title="MemClean: 82% RAM Used">
                       <span id="tray-num">82</span>
@@ -1074,7 +1090,7 @@ Working Sets:  5124 MB</pre>
                 </svg>
                 <span>Download MemClean_Setup.exe</span>
               </a>
-              <div class="download-meta">~450 KB &bull; Inno Setup &bull; SHA-256 Verified</div>
+              <div class="download-meta">~2.4 MB &bull; Inno Setup &bull; SHA-256 Verified</div>
             </div>
           </div>
 
@@ -1115,7 +1131,7 @@ Working Sets:  5124 MB</pre>
                 </svg>
                 <span>Download memclean.exe</span>
               </a>
-              <div class="download-meta">~420 KB &bull; Standalone Binary</div>
+              <div class="download-meta">~1.1 MB &bull; Standalone Binary</div>
             </div>
           </div>
 
