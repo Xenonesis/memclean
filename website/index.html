@@ -53,6 +53,8 @@
           <li><a href="#architecture" class="nav-link">Architecture</a></li>
           <li><a href="#comparison" class="nav-link">Comparison</a></li>
           <li><a href="#cli" class="nav-link">CLI</a></li>
+          <li><a href="cli-reference.html" class="nav-link">CLI Reference</a></li>
+          <li><a href="troubleshooting.html" class="nav-link">Troubleshooting</a></li>
           <li><a href="#faq" class="nav-link">FAQ</a></li>
           <li><a href="#download" class="nav-link">Download</a></li>
         </ul>
@@ -619,6 +621,66 @@
               <span class="bento-meta-badge">Rust 2021 Edition</span>
             </div>
           </div>
+
+          <!-- Bento 7: Best for Your Device (SSD/HDD Auto-Detect) -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M6 14h12"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Best for Your Device (SSD/HDD)</h3>
+              <p class="bento-desc">
+                Detects system drive type via <code style="color: var(--pastel-blue-text);">IOCTL_STORAGE_QUERY_PROPERTY</code> seek-penalty query. Applies storage-aware defaults — disables modified-page flushing and the periodic timer on SSDs to avoid write wear; tunes threshold per drive type. Manual overrides always win.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Auto-Detect</span>
+              <span class="bento-meta-badge">v1.1.3</span>
+            </div>
+          </div>
+
+          <!-- Bento 8: Threshold Auto-Clean (v1.1.2 fix) -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </div>
+              <h3 class="bento-title">Threshold Auto-Clean</h3>
+              <p class="bento-desc">
+                When RAM% crosses the threshold, runs the full purge pipeline (standby + modified flush + working-set trim) so RAM% actually drops. Reports freed MB in tray status. Master gate <code style="color: var(--pastel-blue-text);">auto_clean_enabled</code> prevents duplicate runs.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Master-Gated</span>
+              <span class="bento-meta-badge">v1.1.2 fix</span>
+            </div>
+          </div>
+
+          <!-- Bento 9: Owner-Draw Hover Feedback -->
+          <div class="bento-card">
+            <div class="bento-card-content">
+              <div class="bento-icon-wrapper">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <path d="M7 7L17 17"></path>
+                  <path d="M17 7L7 17"></path>
+                </svg>
+              </div>
+              <h3 class="bento-title">Owner-Draw Hover Feedback</h3>
+              <p class="bento-desc">
+                Animated background + border on tabs and Apply button via <code style="color: var(--pastel-blue-text);">TrackMouseEvent(TME_LEAVE)</code> and <code>WM_MOUSELEAVE</code>. Polished, responsive feel with full keyboard/focus accessibility.
+              </p>
+            </div>
+            <div class="bento-meta">
+              <span>Win32 GDI</span>
+              <span class="bento-meta-badge">v1.1.2 polish</span>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -716,6 +778,60 @@
               MemClean interacts with the Windows NT memory manager internal page lists. Tiers 1&ndash;4 reclaim cached data and file buffers that processes are no longer using. When Game Guard is active, Tier 5 completely skips the active foreground window, keeping game assets pinned in physical RAM.
             </p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         Benchmark & System Requirements
+         ==================================================================== -->
+    <section class="section" id="benchmarks">
+      <div class="container reveal-on-scroll">
+        <div class="section-header">
+          <span class="section-tag">Measured Performance</span>
+          <h2 class="section-title">Benchmarks &amp; System Requirements</h2>
+          <p class="section-desc">
+            Measured on Windows 11 23H2, 16 GB DDR4. Idle figures taken after 10 minutes at desktop with no foreground load.
+          </p>
+        </div>
+
+        <div class="benchmark-grid">
+          <div class="bench-card">
+            <h3 class="bench-title">Idle Footprint</h3>
+            <div class="bench-stat">&lt; 2 MB</div>
+            <p class="bench-desc">RAM footprint at idle — 10x–15x lighter than typical AutoIt/.NET cleaners.</p>
+          </div>
+          <div class="bench-card">
+            <h3 class="bench-title">Idle CPU</h3>
+            <div class="bench-stat">0.0%</div>
+            <p class="bench-desc">Zero background CPU — no polling, no timers unless auto-clean is enabled.</p>
+          </div>
+          <div class="bench-card">
+            <h3 class="bench-title">Binary Size</h3>
+            <div class="bench-stat">~1.1 MB</div>
+            <p class="bench-desc">Standalone portable binary; installer ~2.4 MB (Inno Setup).</p>
+          </div>
+          <div class="bench-card">
+            <h3 class="bench-title">Purge Latency</h3>
+            <div class="bench-stat">&lt; 500 ms</div>
+            <p class="bench-desc">Full 5-tier kernel purge completes in under half a second.</p>
+          </div>
+        </div>
+
+        <div class="req-table-wrap">
+          <table class="req-table">
+            <thead>
+              <tr><th>Requirement</th><th>Detail</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>OS</strong></td><td>Windows 10 / 11 (64-bit), version 1809+</td></tr>
+              <tr><td><strong>Privileges</strong></td><td>Administrator (auto-elevated via zero-UAC scheduled task)</td></tr>
+              <tr><td><strong>Disk Space</strong></td><td>~2.4 MB installer • ~1.1 MB portable binary</td></tr>
+              <tr><td><strong>RAM (Idle)</strong></td><td>&lt; 2 MB</td></tr>
+              <tr><td><strong>Dependencies</strong></td><td>None — zero external DLLs, no .NET, no Electron, no WebView</td></tr>
+              <tr><td><strong>Build Toolchain</strong></td><td>Rust 1.70+ • windows-sys 0.59 • Cargo</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -1040,7 +1156,62 @@ Working Sets:  5124 MB</pre>
               <span class="faq-icon">+</span>
             </button>
             <div class="faq-content">
-              Yes. MemClean uses the Win32 <code style="color: var(--pastel-blue-text);">AttachConsole()</code> API. When invoked from Command Prompt or PowerShell with arguments like <kbd>--status</kbd>, <kbd>--clean</kbd>, or <kbd>--aggressive</kbd>, it executes headlessly, emits structured stdout, and returns standard exit codes (0 for success).
+              Yes. MemClean uses the Win32 <code style="color: var(--pastel-blue-text);">AttachConsole()</code> API. When invoked from Command Prompt or PowerShell with arguments like <kbd>--status</kbd>, <kbd>--clean</kbd>, or <kbd>--aggressive</kbd>, it executes headlessly, emits structured stdout, and returns standard exit codes (0 for success). Full flag reference is on the <a href="cli-reference.html">CLI Reference</a> page.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>What does "Best for Your Device" do on SSD vs HDD?</span>
+              <span class="badge-new" style="background:var(--accent-amber-bg);color:var(--accent-amber);border:1px solid var(--accent-amber-border);padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:8px;">v1.1.3</span>
+            </button>
+            <div class="faq-content">
+              MemClean detects your system drive type via the <code style="color: var(--pastel-blue-text);">IOCTL_STORAGE_QUERY_PROPERTY</code> seek-penalty query and applies storage-aware defaults:<br><br>
+              <strong>SSD:</strong> <code>flush_modified = false</code> (avoid write wear), timer off / 300s, threshold 85%, <code>trim_working_sets = true</code><br>
+              <strong>HDD:</strong> <code>flush_modified = true</code>, timer off / 300s, threshold 80%, <code>trim_working_sets = false</code> (avoid stall)<br><br>
+              Manual settings always override — the button only suggests defaults.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Where is config stored?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              <code>%APPDATA%\MemClean\config.toml</code><br><br>
+              Typical path: <code>C:\Users\&lt;YourName&gt;\AppData\Roaming\MemClean\config.toml</code><br><br>
+              Reset config by closing MemClean and deleting <code>config.toml</code>; defaults regenerate on next launch.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Does MemClean work on HDD?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Yes. On HDD, MemClean defaults to flushing modified pages to disk (helps HDD cache) and disables working-set trim to avoid seek stalls. The auto-clean threshold is set to 80%. Standby purge remains safe on both SSD and HDD.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>Is MemClean anti-cheat safe?</span>
+              <span class="faq-icon">+</span>
+            </button>
+            <div class="faq-content">
+              Yes. The Game HUD is zero-injection — no DLL hooks, no process memory modification. It is an always-on-top, click-through overlay only. The memory cleaner uses NT kernel APIs that do not inject into game processes.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <button type="button" class="faq-trigger" aria-expanded="false">
+              <span>RAM % did not drop after cleaning</span>
+              <span class="badge-new" style="background:var(--accent-amber-bg);color:var(--accent-amber);border:1px solid var(--accent-amber-border);padding:2px 6px;border-radius:4px;font-size:0.7rem;margin-left:8px;">v1.1.2 fix</span>
+            </button>
+            <div class="faq-content">
+              Before v1.1.2, auto-clean only purged the standby list, which does not lower <code>used%</code> because standby pages count as "available." Since v1.1.2, the full purge pipeline runs on threshold breach, including modified-list flush and working-set trim, so RAM% actually drops.
             </div>
           </div>
         </div>
@@ -1223,7 +1394,12 @@ Working Sets:  5124 MB</pre>
             <li><a href="#simulator" class="footer-link">Live Simulator</a></li>
             <li><a href="#architecture" class="footer-link">5-Tier Architecture</a></li>
             <li><a href="#comparison" class="footer-link">Comparison Matrix</a></li>
-            <li><a href="#cli" class="footer-link">CLI Reference</a></li>
+            <li><a href="cli-reference.html" class="footer-link">CLI Reference</a></li>
+            <li><a href="troubleshooting.html" class="footer-link">Troubleshooting</a></li>
+            <li><a href="changelog.html" class="footer-link">Changelog</a></li>
+            <li><a href="roadmap.html" class="footer-link">Roadmap</a></li>
+            <li><a href="privacy.html" class="footer-link">Privacy</a></li>
+            <li><a href="screenshots.html" class="footer-link">Screenshots</a></li>
           </ul>
         </div>
 
