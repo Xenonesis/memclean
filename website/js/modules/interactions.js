@@ -152,18 +152,7 @@ export function initMobileNav() {
   function toggleMenu(forceState = null) {
     const isExpanded = forceState !== null ? forceState : toggleBtn.getAttribute('aria-expanded') !== 'true';
     toggleBtn.setAttribute('aria-expanded', isExpanded);
-    navLinks.style.display = isExpanded ? 'flex' : '';
-    if (isExpanded) {
-      navLinks.style.flexDirection = 'column';
-      navLinks.style.position = 'absolute';
-      navLinks.style.top = '64px';
-      navLinks.style.left = '0';
-      navLinks.style.right = '0';
-      navLinks.style.backgroundColor = 'var(--bg-surface)';
-      navLinks.style.borderBottom = '1px solid var(--border-light)';
-      navLinks.style.padding = '24px';
-      navLinks.style.gap = '16px';
-    }
+    navLinks.classList.toggle('open', isExpanded);
   }
 
   toggleBtn.addEventListener('click', () => {
