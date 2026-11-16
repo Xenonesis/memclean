@@ -1,9 +1,16 @@
 use crate::config::{AppConfig, TrayClickAction, TrayColorMode, TrayStyle};
-use windows_sys::Win32::Foundation::HWND;
+use crate::core::disk::{detect_system_drive_type, DriveType};
+use windows_sys::Win32::Foundation::{HWND, WPARAM};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    CreateWindowExW, SendMessageW, WS_CHILD, WS_VISIBLE, BS_DEFPUSHBUTTON, WM_SETFONT,
+};
 
 use super::common::{create_chk, create_radio, is_checked, set_checked};
 
-pub const CTRLS: &[i32] = &[101, 102, 103, 104, 105, 201, 202, 204, 215, 216, 203, 214];
+pub const CTRLS: &[i32] = &[101, 102, 103, 104, 105, 201, 202, 204, 215, 216, 203, 214, 250, 251];
+
+const BTN_BEST_DEVICE: i32 = 250;
+const LBL_DRIVE_TYPE: i32 = 251;
 
 /// Creates all controls for Tab 0 (Tray & System).
 ///
@@ -114,6 +121,53 @@ pub unsafe fn create(hwnd: HWND) {
         420,
         214,
     );
+
+    // --- Drive-based optimization tip + Best-for-Device button ---
+    let dt = detect_system_drive_type();
+    let dt_label = match dt {
+        DriveType::Ssd => windows_sys::w!("Detected Drive: SSD  ·  flush_modified off, timer off, threshold 85%"),
+        DriveType::Hdd => windows_sys::w!("Detected Drive: HDD  ·  flush_modified on, timer off, threshold 80%"),
+        DriveType::Unknown => windows_sys::w!("Detected Drive: Unknown  ·  click below for safe defaults"),
+    };
+
+    CreateWindowExW(
+        0,
+        windows_sys::w!("STATIC"),
+        dt_label,
+        WS_CHILD | WS_VISIBLE,
+        30,
+        266,
+        420,
+        16,
+        hwnd,
+        LBL_DRIVE_TYPE as _,
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+    );
+
+    let btn = CreateWindowExW(
+        0,
+        windows_sys::w!("BUTTON"),
+        windows_sys::w!("Best for Your Device"),
+        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON as u32,
+        30,
+        286,
+        420,
+        28,
+        hwnd,
+        BTN_BEST_DEVICE as _,
+        std::ptr::null_mut(),
+        std::ptr::null_mut(),
+    );
+    let f_ui = super::common::font_ui();
+    if !btn.is_null() && !f_ui.is_null() {
+        SendMessageW(
+            btn,
+            WM_SETFONT,
+            f_ui as WPARAM,
+            1,
+        );
+    }
 }
 
 /// Populates Tab 0 controls from application configuration.
@@ -192,6 +246,6 @@ mod tests {
         for &id in CTRLS {
             assert!(seen.insert(id), "Duplicate ID {} in CTRLS", id);
         }
-        assert_eq!(CTRLS.len(), 12);
+        assert_eq!(CTRLS.len(), 14);
     }
 }

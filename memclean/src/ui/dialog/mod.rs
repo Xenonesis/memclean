@@ -399,6 +399,19 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 return 0;
             }
 
+            // "Best for Your Device" — apply SSD/HDD-optimized defaults
+            if id == 250 {
+                let mut cfg = AppConfig::load();
+                let is_ssd = matches!(
+                    crate::core::disk::detect_system_drive_type(),
+                    crate::core::disk::DriveType::Ssd
+                );
+                cfg.apply_device_defaults(is_ssd);
+                let _ = cfg.save();
+                tab_system::load(hwnd, &cfg);
+                return 0;
+            }
+
             let mut cfg = AppConfig::load();
 
             // Delegate to tab_kernel for command actions like Restore Network Defaults (ID 261)

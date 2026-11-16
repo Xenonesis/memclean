@@ -369,6 +369,26 @@ impl AppConfig {
         modified
     }
 
+    /// Applies drive-optimized defaults so the config is tuned for the user's hardware.
+    /// SSD: disable flush_modified (wear), disable timer, higher threshold.
+    /// HDD: allow flush_modified, disable timer, conservative threshold, no WS trim.
+    pub fn apply_device_defaults(&mut self, is_ssd: bool) {
+        if is_ssd {
+            self.policy.flush_modified = false;
+            self.policy.trim_working_sets = true;
+            self.triggers.auto_timer_enabled = false;
+            self.triggers.timer_seconds = 300;
+            self.triggers.threshold_percent = 85;
+        } else {
+            self.policy.flush_modified = true;
+            self.policy.trim_working_sets = false;
+            self.triggers.auto_timer_enabled = false;
+            self.triggers.timer_seconds = 300;
+            self.triggers.threshold_percent = 80;
+        }
+        let _ = self.sanitize();
+    }
+
 
     pub fn load() -> Self {
         let path = Self::config_path();

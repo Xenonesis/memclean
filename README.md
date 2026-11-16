@@ -41,6 +41,7 @@ By interacting directly with undocumented NT kernel memory manager routines (`Nt
 - **Live Process View:** Displays top memory consumers, refreshes every five seconds, and offers per-process Trim and EcoQoS actions.
 - **Polished Button Hover Feedback:** Win32 owner-draw dialog buttons (tabs, Apply) animate on hover with background & border feedback for a modern, responsive feel.
 - **Threshold Auto-Clean Fixed:** Auto-optimize threshold breach now runs the full purge pipeline (standby + working-set trim) so RAM% actually drops, and reports freed MB in tray status.
+- **Best for Your Device:** Detects SSD vs HDD at runtime via `IOCTL_STORAGE_QUERY_PROPERTY` seek-penalty query and applies storage-aware defaults — disables modified-page flushing and the periodic timer on SSDs to avoid write wear, tunes threshold per drive type. Manual overrides always win.
 ---
 
 ## Side-by-Side Comparison: MemClean vs. Sordum ReduceMemory

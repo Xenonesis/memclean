@@ -4,6 +4,7 @@ pub mod ntdll;
 pub mod privileges;
 pub mod process;
 pub mod timer_res;
+pub mod disk;
 pub mod updater;
 pub mod network;
 pub mod vram;
