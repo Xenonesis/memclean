@@ -39,6 +39,8 @@ By interacting directly with undocumented NT kernel memory manager routines (`Nt
 - **Dual-Mode Executable:** A single binary functions as both an interactive Win32 system tray daemon and a scriptable, headless CLI with `--stats --json` support.
 - **Global Optimize Hotkey:** Optional `Ctrl+Alt+M` shortcut purges memory from anywhere, with a tray notification showing the reported RAM change.
 - **Live Process View:** Displays top memory consumers, refreshes every five seconds, and offers per-process Trim and EcoQoS actions.
+- **Polished Button Hover Feedback:** Win32 owner-draw dialog buttons (tabs, Apply) animate on hover with background & border feedback for a modern, responsive feel.
+- **Threshold Auto-Clean Fixed:** Auto-optimize threshold breach now runs the full purge pipeline (standby + working-set trim) so RAM% actually drops, and reports freed MB in tray status.
 ---
 
 ## Side-by-Side Comparison: MemClean vs. Sordum ReduceMemory
