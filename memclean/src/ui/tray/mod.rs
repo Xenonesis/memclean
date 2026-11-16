@@ -775,20 +775,41 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                     let lock = LAST_AUTO_CLEAN.lock().unwrap();
                     lock.map_or(false, |last| now.duration_since(last).as_secs() >= 120)
                 };
+                let mut cleaned_this_tick = false;
 
-                if config.triggers.auto_threshold_enabled
+                if config.triggers.auto_clean_enabled
+                    && config.triggers.auto_threshold_enabled
                     && stats.used_percent >= config.triggers.threshold_percent
                     && can_auto_clean
                 {
-                    cleaner::perform_auto_clean(&config);
+                    // A threshold breach is a real pressure event: run the full configured
+                    // pipeline (standby purge + working-set trim), not the standby-only
+                    // background clean. Standby-only cannot lower the used% that we test
+                    // against (purged standby pages stay "available"), so the threshold
+                    // would re-fire forever without ever relieving pressure.
+                    let before = stats.avail_phys_mb;
+                    let _ = cleaner::perform_clean(&config, false);
+                    let freed = memory::get_memory_stats()
+                        .map(|s| s.avail_phys_mb.saturating_sub(before))
+                        .unwrap_or(0);
                     if let Ok(mut lock) = LAST_AUTO_CLEAN.lock() {
                         *lock = Some(now);
                     }
-                    set_text(hwnd, 103, "Status: Auto-cleaned (exceeded threshold).");
+                    cleaned_this_tick = true;
+                    update_stats_display(hwnd);
+                    update_tray_icon(hwnd, true);
+                    set_text(
+                        hwnd,
+                        103,
+                        &format!(
+                            "Status: Auto-cleaned (RAM {}% > {}%): freed {} MB.",
+                            stats.used_percent, config.triggers.threshold_percent, freed
+                        ),
+                    );
                 }
 
                 // 2. Scheduled timer-based auto-clean (periodic interval, minimum 60s)
-                if config.triggers.auto_timer_enabled {
+                if config.triggers.auto_clean_enabled && config.triggers.auto_timer_enabled && !cleaned_this_tick {
                     let sec = config.triggers.timer_seconds.max(60);
                     let should_timer_clean = {
                         let lock = LAST_PERIODIC_CLEAN.lock().unwrap();
@@ -807,7 +828,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 }
                 let ext_stats = G_EXT_STATS.lock().ok().and_then(|lock| *lock);
                 // 3. ISLC dual condition check
-                if config.triggers.islc_enabled {
+                if config.triggers.auto_clean_enabled && config.triggers.islc_enabled {
                     if let Some(ext) = ext_stats {
                         if crate::engine::islc::should_islc_purge(&ext, config.triggers.islc_standby_mb, config.triggers.islc_free_mb) {
                             cleaner::purge_standby_only();
@@ -817,7 +838,7 @@ unsafe extern "system" fn main_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lp
                 }
 
                 // 4. Inactivity / AFK Idle clean check
-                if config.triggers.idle_clean_enabled {
+                if config.triggers.auto_clean_enabled && config.triggers.idle_clean_enabled {
                     let idle_sec = crate::engine::idle::get_user_idle_seconds();
                     if idle_sec < 5 {
                         G_IDLE_CLEANED.store(false, std::sync::atomic::Ordering::Relaxed);
