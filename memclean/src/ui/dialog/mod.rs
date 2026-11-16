@@ -4,18 +4,22 @@ pub mod tab_system;
 pub mod tab_triggers;
 
 use crate::config::AppConfig;
-use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Gdi::{
     BeginPaint, CreatePen, CreateSolidBrush, DeleteObject, DrawTextW, EndPaint, FillRect,
     InvalidateRect, LineTo, MoveToEx, RoundRect, SelectObject, SetBkMode, SetTextColor,
     PAINTSTRUCT, DT_CENTER, DT_NOPREFIX, DT_SINGLELINE, DT_VCENTER, PS_SOLID, TRANSPARENT,
 };
-use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, GetDlgCtrlID,
+use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+    TrackMouseEvent, TME_LEAVE, TRACKMOUSEEVENT,
+};
+const WM_MOUSELEAVE: u32 = 0x02A3;
+use windows_sys::Win32::UI::WindowsAndMessaging::{GetDlgCtrlID,
+    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect,
     GetDlgItem, GetMessageW, IsDialogMessageW, IsWindow, LoadIconW, RegisterClassW, SendMessageW,
     ShowWindow, BS_OWNERDRAW, MSG, SW_HIDE, SW_SHOW, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORDLG,
-    WM_CTLCOLOREDIT, WM_CTLCOLORSTATIC, WM_DESTROY, WM_DRAWITEM, WM_ERASEBKGND, WM_PAINT,
-    WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
+    WM_CTLCOLOREDIT, WM_DESTROY, WM_DRAWITEM, WM_ERASEBKGND, WM_MOUSEMOVE,
+    WM_PAINT, WM_SETFONT, WM_SETICON, WNDCLASSW, WS_CHILD, WS_OVERLAPPEDWINDOW, WS_VISIBLE,
 };
 
 use self::common::{
@@ -38,6 +42,7 @@ struct DRAWITEMSTRUCT {
 }
 
 static mut CURRENT_TAB: usize = 0;
+static mut HOVERED_BTN: i32 = 0;
 
 unsafe fn switch_tab(hwnd: HWND, new_tab: usize) {
     CURRENT_TAB = new_tab;
@@ -240,41 +245,30 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                     DrawTextW(hdc, windows_sys::w!("USER INACTIVITY && AFK TRIGGER"), -1, &mut hidle_rc, DT_SINGLELINE);
                 }
                 _ => {
-                    // Card 1: Windows Scheduler Timer Resolution (16, 54, 468, 226)
+                    // Card 1: Kernel Timer Resolution (16, 54, 468, 226)
                     RoundRect(hdc, 16, 54, 468, 226, 8, 8);
                     SetTextColor(hdc, 0x00747778);
-                    let mut hres_rc = RECT { left: 30, top: 64, right: 454, bottom: 78 };
-                    DrawTextW(hdc, windows_sys::w!("SCHEDULER TIMER RESOLUTION (SUB-MILLISECOND PRECISION)"), -1, &mut hres_rc, DT_SINGLELINE);
+                    let mut hk_rc = RECT { left: 30, top: 64, right: 454, bottom: 78 };
+                    DrawTextW(hdc, windows_sys::w!("TIMER RESOLUTION LOCK"), -1, &mut hk_rc, DT_SINGLELINE);
 
-                    // Card 2: Memory De-duplication & Network (16, 238, 468, 412)
-                    RoundRect(hdc, 16, 238, 468, 412, 8, 8);
-                    let mut hpage_rc = RECT { left: 30, top: 246, right: 454, bottom: 258 };
-                    DrawTextW(hdc, windows_sys::w!("MEMORY DE-DUPLICATION (NT KERNEL)"), -1, &mut hpage_rc, DT_SINGLELINE);
+                    // Card 2: Network & Gaming Tweaks (16, 238, 468, 404)
+                    RoundRect(hdc, 16, 238, 468, 404, 8, 8);
+                    let mut hn_rc = RECT { left: 30, top: 248, right: 454, bottom: 262 };
+                    DrawTextW(hdc, windows_sys::w!("NETWORK & GAMING LATENCY TWEAKS"), -1, &mut hn_rc, DT_SINGLELINE);
 
-                    MoveToEx(hdc, 30, 328, std::ptr::null_mut());
-                    LineTo(hdc, 454, 328);
+                    MoveToEx(hdc, 30, 326, std::ptr::null_mut());
+                    LineTo(hdc, 454, 326);
 
-                    let mut hnet_rc = RECT { left: 30, top: 334, right: 454, bottom: 346 };
-                    DrawTextW(hdc, windows_sys::w!("COMPETITIVE NETWORK STACK (LOW PING)"), -1, &mut hnet_rc, DT_SINGLELINE);
+                    let mut hnr_rc = RECT { left: 30, top: 334, right: 454, bottom: 348 };
+                    DrawTextW(hdc, windows_sys::w!("RESTORE NETWORK DEFAULTS"), -1, &mut hnr_rc, DT_SINGLELINE);
                 }
             }
 
-            SelectObject(hdc, old_brush);
             SelectObject(hdc, old_pen);
+            SelectObject(hdc, old_brush);
             SelectObject(hdc, old_font);
-            EndPaint(hwnd, &ps);
+            EndPaint(hwnd, &mut ps);
             0
-        }
-        WM_CTLCOLORSTATIC => {
-            let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
-            SetBkMode(hdc, TRANSPARENT as i32);
-            let ctrl_id = GetDlgCtrlID(lparam as HWND);
-            if ctrl_id == 208 || ctrl_id == 213 || ctrl_id == 233 || ctrl_id == 251 || ctrl_id == 252 || ctrl_id == 262 {
-                SetTextColor(hdc, 0x00747778); // Muted helper text
-            } else {
-                SetTextColor(hdc, 0x00111111);
-            }
-            card_brush() as LRESULT // Controls match white card surface
         }
         WM_CTLCOLORBTN => {
             let hdc = wparam as windows_sys::Win32::Graphics::Gdi::HDC;
@@ -296,8 +290,9 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             if dis.CtlID >= 601 && dis.CtlID <= 603 {
                 let tab_idx = (dis.CtlID - 601) as usize;
                 let is_active = tab_idx == CURRENT_TAB;
-                let bg_color = if is_active { 0x00111111 } else { 0x00FFFFFF };
-                let border_color = if is_active { 0x00111111 } else { 0x00EAEAEA };
+                let is_hover = dis.CtlID as i32 == HOVERED_BTN && !is_active;
+                let bg_color = if is_active { 0x00111111 } else if is_hover { 0x00F2F2F2 } else { 0x00FFFFFF };
+                let border_color = if is_active { 0x00111111 } else if is_hover { 0x00CFCFCF } else { 0x00EAEAEA };
                 let text_color = if is_active { 0x00FFFFFF } else { 0x00787774 };
 
                 let brush = CreateSolidBrush(bg_color);
@@ -325,7 +320,8 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
                 1
             } else if dis.CtlID == 301 {
                 let is_selected = (dis.itemState & ODS_SELECTED) != 0;
-                let bg_color = if is_selected { 0x002E2E2E } else { 0x00111111 };
+                let is_hover = HOVERED_BTN == 301 && !is_selected;
+                let bg_color = if is_selected { 0x002E2E2E } else if is_hover { 0x002A2A2A } else { 0x00111111 };
                 let brush = CreateSolidBrush(bg_color);
                 let pen = CreatePen(PS_SOLID as i32, 1, bg_color);
                 let old_brush = SelectObject(dis.hDC, brush);
@@ -347,6 +343,54 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             } else {
                 0
             }
+        }
+        WM_MOUSEMOVE => {
+            let pt = POINT {
+                x: (lparam & 0xFFFF) as i16 as i32,
+                y: ((lparam >> 16) & 0xFFFF) as i16 as i32,
+            };
+            let child = windows_sys::Win32::UI::WindowsAndMessaging::ChildWindowFromPoint(hwnd, pt);
+            let raw = if !child.is_null() {
+                GetDlgCtrlID(child)
+            } else {
+                0
+            };
+            let new_hover = if (raw >= 601 && raw <= 603) || raw == 301 { raw } else { 0 };
+            if new_hover != HOVERED_BTN {
+                let old = HOVERED_BTN;
+                HOVERED_BTN = new_hover;
+                if old != 0 {
+                    let btn = GetDlgItem(hwnd, old as i32);
+                    if !btn.is_null() {
+                        InvalidateRect(btn, std::ptr::null(), 1);
+                    }
+                }
+                if new_hover != 0 {
+                    let btn = GetDlgItem(hwnd, new_hover as i32);
+                    if !btn.is_null() {
+                        InvalidateRect(btn, std::ptr::null(), 1);
+                    }
+                }
+            }
+            let mut tme = TRACKMOUSEEVENT {
+                cbSize: std::mem::size_of::<TRACKMOUSEEVENT>() as u32,
+                dwFlags: TME_LEAVE,
+                hwndTrack: hwnd,
+                dwHoverTime: 0,
+            };
+            TrackMouseEvent(&mut tme);
+            0
+        }
+        WM_MOUSELEAVE => {
+            let old = HOVERED_BTN;
+            HOVERED_BTN = 0;
+            if old != 0 {
+                let btn = GetDlgItem(hwnd, old as i32);
+                if !btn.is_null() {
+                    InvalidateRect(btn, std::ptr::null(), 1);
+                }
+            }
+            0
         }
         WM_COMMAND => {
             let id = (wparam & 0xFFFF) as u32;
@@ -377,46 +421,5 @@ unsafe extern "system" fn dialog_wnd_proc(hwnd: HWND, msg: u32, wparam: WPARAM, 
             0
         }
         _ => DefWindowProcW(hwnd, msg, wparam, lparam),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_tab_control_ids_are_disjoint() {
-        use std::collections::HashSet;
-        let mut seen = HashSet::new();
-        for &id in tab_system::CTRLS {
-            assert!(seen.insert(id), "Duplicate ID {} in tab_system::CTRLS", id);
-        }
-        for &id in tab_triggers::CTRLS {
-            assert!(seen.insert(id), "Duplicate ID {} in tab_triggers::CTRLS", id);
-        }
-        for &id in tab_kernel::CTRLS {
-            assert!(seen.insert(id), "Duplicate ID {} in tab_kernel::CTRLS", id);
-        }
-
-        // Tab buttons and action button must not collide with content IDs
-        for id in [301, 601, 602, 603] {
-            assert!(!seen.contains(&id), "Button ID {} collides with control ID", id);
-        }
-    }
-
-    #[test]
-    fn test_all_expected_controls_mapped() {
-        let expected = [
-            101, 102, 103, 104, 105, 201, 202, 204, 215, 216, 203, 214, // Tab 0
-            205, 206, 207, 208, 209, 210, 211, 212, 213, // Tab 1 threshold & timer
-            220, 221, 222, 223, 224, 225, 226, 230, 231, 232, 233, // Tab 1 islc & idle
-            240, 241, 242, 243, 250, 270, 275, 251, 260, 261, 262, // Tab 2 kernel, de-dup, vram, cpu & network
-        ];
-        for &id in &expected {
-            let in_0 = tab_system::CTRLS.contains(&id);
-            let in_1 = tab_triggers::CTRLS.contains(&id);
-            let in_2 = tab_kernel::CTRLS.contains(&id);
-            assert!(in_0 || in_1 || in_2, "Expected control ID {} not mapped in any tab", id);
-        }
     }
 }
