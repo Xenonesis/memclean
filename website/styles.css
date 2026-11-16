@@ -436,6 +436,118 @@ kbd {
 }
 
 /* ==========================================================================
+   Base Components (Swiss Minimal — consistent across all pages)
+   ========================================================================== */
+
+.card {
+  position: relative;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+  pointer-events: none;
+  box-shadow: var(--shadow-card);
+}
+
+.card:hover {
+  border-color: var(--border-subtle);
+  transform: translateY(-1px);
+  transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card:hover::before {
+  box-shadow: var(--shadow-elevated);
+}
+
+.card-body {
+  padding: var(--space-lg);
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.card-desc {
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* Table — hairline borders, mono code cells, left-aligned */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+}
+
+.table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  background-color: var(--bg-inset);
+}
+
+.table td code,
+.table th code {
+  font-size: 0.8125rem;
+  color: var(--accent-cyan);
+  background-color: var(--bg-surface-elevated);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-hairline);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table tr:hover td {
+  background-color: var(--bg-surface-hover);
+}
+
+/* Feature Grid — Swiss minimal card layout */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-lg);
+}
+
+.card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-md);
+  color: var(--accent-emerald);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-xs);
+}
+
+/* ==========================================================================
    Hero Section
    ========================================================================== */
 

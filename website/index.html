@@ -396,291 +396,88 @@
           </p>
         </div>
 
-        <div class="bento-grid">
-          <!-- Bento 1: 5-Tier NT Kernel Purge (Featured) -->
-          <div class="bento-card bento-card-featured">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <div class="feature-grid">
+          <!-- Card 1: 5-Tier NT Kernel Purge -->
+          <article class="card">
+            <div class="card-body">
+              <div class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                   <polyline points="2 17 12 22 22 17"></polyline>
                   <polyline points="2 12 12 17 22 12"></polyline>
                 </svg>
               </div>
-              <h3 class="bento-title">5-Tier Purge &amp; ISLC Standby Cleaner</h3>
-              <p class="bento-desc">
-                Directly invokes undocumented Windows NT kernel routines via <code style="color: var(--pastel-blue-text);">NtSetSystemInformation</code> and the filesystem cache manager. Features an Intelligent Standby Cleaner (ISLC) that only purges when standby memory is high and free memory is low, preventing cache eviction churn.
+              <h3 class="card-title">5-Tier NT Kernel Purge</h3>
+              <p class="card-desc">
+                Surgical standby, modified-page, and file-cache reclamation via direct Windows NT kernel routines (<code>NtSetSystemInformation</code>). ISLC intelligence prevents cache eviction churn — never forces active code into the pagefile.
               </p>
             </div>
-            <div class="bento-meta">
-              <span>NtSetSystemInformation</span>
-              <span class="bento-meta-badge">Direct Free List Transition</span>
-            </div>
-          </div>
+          </article>
 
-          <!-- Bento 2: Smart Game & Foreground Shield -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                  <path d="m9 12 2 2 4-4"></path>
-                </svg>
-              </div>
-              <h3 class="bento-title">0.5 ms Scheduler Timer &amp; 100% Core Unpark</h3>
-              <p class="bento-desc">
-                Locks Windows global timer resolution to 0.500 ms (2,000 Hz) via <code style="color: var(--pastel-blue-text);">NtSetTimerResolution</code> and unparks 100% of CPU cores for zero-stutter burst performance and smooth frame pacing.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>GetForegroundWindow API</span>
-              <span class="bento-meta-badge">Zero Stutter</span>
-            </div>
-          </div>
-
-          <!-- Bento 3: Live GDI System Tray Badge -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-              </div>
-              <h3 class="bento-title">Kernel Page Combining &amp; Segmented Bar</h3>
-              <p class="bento-desc">
-                Calls NT class 130 (<code style="color: var(--pastel-blue-text);">SystemCombinePhysicalMemoryInformation</code>) to de-duplicate identical physical pages across Electron/Chrome apps into Copy-On-Write pages without disk I/O, visualized via a segmented GDI memory bar.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Pure Win32 GDI</span>
-              <span class="bento-meta-badge">Sub-ms Rendering</span>
-            </div>
-          </div>
-          <!-- Bento: Intel/AMD Hybrid Core Allocator -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="4" y="4" width="16" height="16" rx="2"></rect>
-                  <rect x="9" y="9" width="6" height="6"></rect>
-                  <line x1="9" y1="1" x2="9" y2="4"></line>
-                  <line x1="15" y1="1" x2="15" y2="4"></line>
-                  <line x1="9" y1="20" x2="9" y2="23"></line>
-                  <line x1="15" y1="20" x2="15" y2="23"></line>
-                </svg>
-              </div>
-              <h3 class="bento-title">Intel/AMD Hybrid P/E Core Allocator</h3>
-              <p class="bento-desc">
-                Detects Performance Cores vs Efficiency Cores via <code style="color: var(--pastel-blue-text);">GetLogicalProcessorInformationEx</code>. Locks active games to P-Cores while clamping background bloat (Discord, Chrome) to E-Cores.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Hardware Core Topology</span>
-              <span class="bento-meta-badge">P/E Core Affinity</span>
-            </div>
-          </div>
-
-          <!-- Bento: WDDM GPU VRAM Cache Manager -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                  <line x1="8" y1="21" x2="16" y2="21"></line>
-                  <line x1="12" y1="17" x2="12" y2="21"></line>
-                </svg>
-              </div>
-              <h3 class="bento-title">WDDM GPU VRAM Decommitment</h3>
-              <p class="bento-desc">
-                Invokes WDDM 2.1+ kernel routine <code style="color: var(--pastel-blue-text);">D3DKMTTrimProcessCommitment</code> and DXGI multi-GPU telemetry to decommit unreferenced GPU texture buffers across background apps on exit.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>WDDM 2.1+ Driver Thunk</span>
-              <span class="bento-meta-badge">VRAM Reclaim</span>
-            </div>
-          </div>
-
-          <!-- Bento: Competitive Gaming Network Stack -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-              </div>
-              <h3 class="bento-title">Competitive Low-Latency TCP Stack</h3>
-              <p class="bento-desc">
-                Configures <code style="color: var(--pastel-blue-text);">TCPNoDelay=1</code>, <code style="color: var(--pastel-blue-text);">TcpAckFrequency=1</code>, and eliminates Windows 20% network throttling to minimize gaming ping with atomic rollback backup.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Nagle's Algorithm Bypass</span>
-              <span class="bento-meta-badge">Instant ACKs</span>
-            </div>
-          </div>
-
-          <!-- Bento: Zero-Injection Minimalist Game HUD -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </div>
-              <h3 class="bento-title">Zero-Injection Game HUD (Ctrl+Shift+O)</h3>
-              <p class="bento-desc">
-                100% Anti-Cheat Safe (no DLL hooks). Always-on-top, click-through micro-overlay displaying live FPS, frame-time latency, RAM, VRAM, and 0.5ms scheduler timer resolution.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Anti-Cheat Safe</span>
-              <span class="bento-meta-badge">Click-Through HUD</span>
-            </div>
-          </div>
-
-          <!-- Bento: Driver Hard Fault Telemetry -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                </svg>
-              </div>
-              <h3 class="bento-title">Hard Page Fault Telemetry</h3>
-              <p class="bento-desc">
-                Queries <code style="color: var(--pastel-blue-text);">NtQuerySystemInformation(2)</code> to monitor real-time disk page fault reads and diagnose the exact root causes of gaming frame-rate stutter.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>NT Performance Class 2</span>
-              <span class="bento-meta-badge">Stutter Detection</span>
-            </div>
-          </div>
-
-          <!-- Bento 4: Silent Zero-UAC Elevation -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- Card 2: Zero Stutter, Zero UAC -->
+          <article class="card">
+            <div class="card-body">
+              <div class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                   <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                 </svg>
               </div>
-              <h3 class="bento-title">Silent Zero-UAC Startup</h3>
-              <p class="bento-desc">
-                Eliminates repetitive UAC elevation prompts at login. MemClean registers a scheduled logon task using Windows Task Scheduler with <code style="color: var(--pastel-blue-text);">TASK_RUNLEVEL_HIGHEST</code>.
+              <h3 class="card-title">Zero Stutter &middot; Zero UAC</h3>
+              <p class="card-desc">
+                0.5 ms scheduler timer, P/E-core affinity, and a scheduled logon task (<code>TASK_RUNLEVEL_HIGHEST</code>) that starts MemClean at login with no elevation prompts.
               </p>
             </div>
-            <div class="bento-meta">
-              <span>Task Scheduler Engine</span>
-              <span class="bento-meta-badge">Zero UAC Dialogs</span>
-            </div>
-          </div>
+          </article>
 
-          <!-- Bento 5: Dual-Mode Single Binary (GUI + CLI) -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- Card 3: Best for Your Device (SSD/HDD) -->
+          <article class="card">
+            <div class="card-body">
+              <div class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect>
+                  <path d="M6 10h.01M10 10h.01M14 10h.01M6 14h12"></path>
+                </svg>
+              </div>
+              <h3 class="card-title">Best for Your Device (SSD/HDD)</h3>
+              <p class="card-desc">
+                Auto-detects system drive type via <code>IOCTL_STORAGE_QUERY_PROPERTY</code> seek-penalty query. Disables modified-page flush and timer on SSDs to avoid write wear; tunes threshold per drive type. Manual overrides always win.
+              </p>
+            </div>
+          </article>
+
+          <!-- Card 4: Machine-Readable CLI -->
+          <article class="card">
+            <div class="card-body">
+              <div class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <polyline points="4 17 10 11 4 5"></polyline>
                   <line x1="12" y1="19" x2="20" y2="19"></line>
                 </svg>
               </div>
-              <h3 class="bento-title">Machine-Readable JSON CLI &amp; EcoQoS</h3>
-              <p class="bento-desc">
-                Pass flags like <kbd>--stats --json</kbd> to integrate directly with Rainmeter or monitoring scripts. Toggle Windows 11 EcoQoS (Efficiency Mode) on background hogs straight from the dashboard.
+              <h3 class="card-title">Scriptable JSON CLI</h3>
+              <p class="card-desc">
+                Pass flags like <kbd>--stats --json</kbd> to integrate with Rainmeter or monitoring scripts. Toggle Windows 11 EcoQoS on background hogs from any shell.
               </p>
             </div>
-            <div class="bento-meta">
-              <span>AttachConsole API</span>
-              <span class="bento-meta-badge">Scriptable</span>
-            </div>
-          </div>
+          </article>
 
-          <!-- Bento 6: Pure Rust 2021 Implementation -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <!-- Card 5: Zero Runtime Overhead -->
+          <article class="card">
+            <div class="card-body">
+              <div class="card-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                   <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                   <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
               </div>
-              <h3 class="bento-title">Zero Runtime Overhead</h3>
-              <p class="bento-desc">
-                No web views, no Electron shell, no .NET dependencies, and no external runtime DLLs. Compiled with Link-Time Optimization (LTO) into a clean, standalone PE binary.
+              <h3 class="card-title">Zero Runtime Overhead</h3>
+              <p class="card-desc">
+                No web views, no Electron shell, no .NET dependencies, no external runtime DLLs. Compiled with LTO into a clean standalone PE binary &mdash; sub-500 KB, &lt;2 MB idle RAM.
               </p>
             </div>
-            <div class="bento-meta">
-              <span>Zero External DLLs</span>
-              <span class="bento-meta-badge">Rust 2021 Edition</span>
-            </div>
-          </div>
-
-          <!-- Bento 7: Best for Your Device (SSD/HDD Auto-Detect) -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect>
-                  <path d="M6 10h.01M10 10h.01M14 10h.01M6 14h12"></path>
-                </svg>
-              </div>
-              <h3 class="bento-title">Best for Your Device (SSD/HDD)</h3>
-              <p class="bento-desc">
-                Detects system drive type via <code style="color: var(--pastel-blue-text);">IOCTL_STORAGE_QUERY_PROPERTY</code> seek-penalty query. Applies storage-aware defaults — disables modified-page flushing and the periodic timer on SSDs to avoid write wear; tunes threshold per drive type. Manual overrides always win.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Auto-Detect</span>
-              <span class="bento-meta-badge">v1.1.3</span>
-            </div>
-          </div>
-
-          <!-- Bento 8: Threshold Auto-Clean (v1.1.2 fix) -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <h3 class="bento-title">Threshold Auto-Clean</h3>
-              <p class="bento-desc">
-                When RAM% crosses the threshold, runs the full purge pipeline (standby + modified flush + working-set trim) so RAM% actually drops. Reports freed MB in tray status. Master gate <code style="color: var(--pastel-blue-text);">auto_clean_enabled</code> prevents duplicate runs.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Master-Gated</span>
-              <span class="bento-meta-badge">v1.1.2 fix</span>
-            </div>
-          </div>
-
-          <!-- Bento 9: Owner-Draw Hover Feedback -->
-          <div class="bento-card">
-            <div class="bento-card-content">
-              <div class="bento-icon-wrapper">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <path d="M7 7L17 17"></path>
-                  <path d="M17 7L7 17"></path>
-                </svg>
-              </div>
-              <h3 class="bento-title">Owner-Draw Hover Feedback</h3>
-              <p class="bento-desc">
-                Animated background + border on tabs and Apply button via <code style="color: var(--pastel-blue-text);">TrackMouseEvent(TME_LEAVE)</code> and <code>WM_MOUSELEAVE</code>. Polished, responsive feel with full keyboard/focus accessibility.
-              </p>
-            </div>
-            <div class="bento-meta">
-              <span>Win32 GDI</span>
-              <span class="bento-meta-badge">v1.1.2 polish</span>
-            </div>
-          </div>
+          </article>
         </div>
       </div>
     </section>
