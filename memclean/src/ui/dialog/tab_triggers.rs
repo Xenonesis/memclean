@@ -7,7 +7,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     ES_NUMBER, WM_SETFONT, WS_BORDER, WS_CHILD, WS_VISIBLE,
 };
 
-use super::common::{create_chk, font_subheader, font_ui, is_checked, set_checked};
+use super::common::{create_chk, font_desc, font_ui, is_checked, set_checked};
 
 pub const CTRLS: &[i32] = &[
     205, 206, 207, 208, 209, 210, 211, 212, 213, 220, 221, 222, 223, 224, 225, 226, 230, 231,
@@ -20,16 +20,16 @@ pub const CTRLS: &[i32] = &[
 /// Caller must ensure `hwnd` is a valid dialog window handle on the UI thread.
 pub unsafe fn create(hwnd: HWND) {
     // --- TAB 1: AUTO-TRIGGERS ---
-    // Card 1: RAM Threshold Controls
+    // Left Column: RAM Threshold Controls
     let lbl_thresh = CreateWindowExW(
         0,
         windows_sys::w!("STATIC"),
         windows_sys::w!("Auto-optimize when RAM exceeds:"),
         WS_CHILD | WS_VISIBLE,
-        30,
-        88,
-        220,
-        20,
+        34,
+        224,
+        230,
+        22,
         hwnd,
         206 as _,
         std::ptr::null_mut(),
@@ -44,10 +44,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("EDIT"),
         windows_sys::w!("80"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
-        254,
-        86,
-        44,
-        22,
+        270,
+        220,
+        50,
+        26,
         hwnd,
         205 as _,
         std::ptr::null_mut(),
@@ -62,10 +62,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("%"),
         WS_CHILD | WS_VISIBLE,
-        304,
-        88,
+        326,
+        224,
         20,
-        20,
+        22,
         hwnd,
         207 as _,
         std::ptr::null_mut(),
@@ -80,38 +80,39 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("(Range: 50% - 95%, Default: 80%)"),
         WS_CHILD | WS_VISIBLE,
-        30,
-        112,
-        300,
-        16,
+        34,
+        254,
+        354,
+        18,
         hwnd,
         208 as _,
         std::ptr::null_mut(),
         std::ptr::null_mut(),
     );
-    if !lbl_note.is_null() && !font_subheader().is_null() {
-        SendMessageW(lbl_note, WM_SETFONT, font_subheader() as WPARAM, 1);
+    let f_desc = font_desc();
+    if !lbl_note.is_null() && !f_desc.is_null() {
+        SendMessageW(lbl_note, WM_SETFONT, f_desc as WPARAM, 1);
     }
 
-    // Card 1: Periodic Auto-Clean Timer Controls
+    // Left Column: Periodic Auto-Clean Timer Controls
     create_chk(
         hwnd,
-        windows_sys::w!("Enable periodic auto-clean timer"),
-        30,
-        164,
-        420,
+        windows_sys::w!("Enable Periodic Auto-Clean Timer"),
+        34,
+        330,
+        354,
         209,
     );
 
     let lbl_timer = CreateWindowExW(
         0,
         windows_sys::w!("STATIC"),
-        windows_sys::w!("Interval:"),
+        windows_sys::w!("Clean Interval:"),
         WS_CHILD | WS_VISIBLE,
-        50,
-        190,
-        60,
-        20,
+        34,
+        384,
+        100,
+        22,
         hwnd,
         210 as _,
         std::ptr::null_mut(),
@@ -126,10 +127,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("EDIT"),
         windows_sys::w!("300"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
-        114,
-        188,
-        50,
-        22,
+        138,
+        380,
+        60,
+        26,
         hwnd,
         211 as _,
         std::ptr::null_mut(),
@@ -144,10 +145,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("seconds"),
         WS_CHILD | WS_VISIBLE,
-        170,
-        190,
+        206,
+        384,
         60,
-        20,
+        22,
         hwnd,
         212 as _,
         std::ptr::null_mut(),
@@ -160,28 +161,28 @@ pub unsafe fn create(hwnd: HWND) {
     let lbl_note2 = CreateWindowExW(
         0,
         windows_sys::w!("STATIC"),
-        windows_sys::w!("(Range: 60s - 3600s, Default: 300s)"),
+        windows_sys::w!("(Range: 60s - 3600s, Default: 300s / 5m)"),
         WS_CHILD | WS_VISIBLE,
-        236,
-        190,
-        240,
+        34,
+        414,
+        354,
         18,
         hwnd,
         213 as _,
         std::ptr::null_mut(),
         std::ptr::null_mut(),
     );
-    if !lbl_note2.is_null() && !font_subheader().is_null() {
-        SendMessageW(lbl_note2, WM_SETFONT, font_subheader() as WPARAM, 1);
+    if !lbl_note2.is_null() && !f_desc.is_null() {
+        SendMessageW(lbl_note2, WM_SETFONT, f_desc as WPARAM, 1);
     }
 
-    // Card 2: ISLC Standby Trigger Controls
+    // --- RIGHT COLUMN: ISLC Standby Trigger Controls ---
     create_chk(
         hwnd,
         windows_sys::w!("Enable ISLC Standby Trigger (Gaming)"),
-        30,
-        268,
-        420,
+        432,
+        220,
+        354,
         220,
     );
 
@@ -190,10 +191,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("Standby >="),
         WS_CHILD | WS_VISIBLE,
-        50,
-        294,
-        75,
-        20,
+        432,
+        274,
+        76,
+        22,
         hwnd,
         223 as _,
         std::ptr::null_mut(),
@@ -208,10 +209,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("EDIT"),
         windows_sys::w!("1024"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
-        130,
-        292,
-        54,
-        22,
+        512,
+        270,
+        60,
+        26,
         hwnd,
         221 as _,
         std::ptr::null_mut(),
@@ -226,10 +227,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("MB"),
         WS_CHILD | WS_VISIBLE,
-        190,
-        294,
-        28,
-        20,
+        578,
+        274,
+        26,
+        22,
         hwnd,
         224 as _,
         std::ptr::null_mut(),
@@ -244,10 +245,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("Free <="),
         WS_CHILD | WS_VISIBLE,
-        232,
-        294,
-        58,
-        20,
+        620,
+        274,
+        62,
+        22,
         hwnd,
         225 as _,
         std::ptr::null_mut(),
@@ -262,10 +263,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("EDIT"),
         windows_sys::w!("1024"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
-        294,
-        292,
-        54,
-        22,
+        686,
+        270,
+        60,
+        26,
         hwnd,
         222 as _,
         std::ptr::null_mut(),
@@ -280,10 +281,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("MB"),
         WS_CHILD | WS_VISIBLE,
-        354,
-        294,
-        28,
-        20,
+        752,
+        274,
+        26,
+        22,
         hwnd,
         226 as _,
         std::ptr::null_mut(),
@@ -293,25 +294,25 @@ pub unsafe fn create(hwnd: HWND) {
         SendMessageW(lbl_islc_f_mb, WM_SETFONT, font_ui() as WPARAM, 1);
     }
 
-    // Card 2: User Inactivity / AFK Idle Clean
+    // Right Column: User Inactivity / AFK Idle Clean
     create_chk(
         hwnd,
-        windows_sys::w!("Auto-clean on user inactivity / AFK"),
-        30,
-        352,
-        420,
+        windows_sys::w!("Auto-Clean on User Inactivity / AFK"),
+        432,
+        360,
+        354,
         230,
     );
 
     let lbl_idle = CreateWindowExW(
         0,
         windows_sys::w!("STATIC"),
-        windows_sys::w!("Idle timeout:"),
+        windows_sys::w!("Idle Timeout:"),
         WS_CHILD | WS_VISIBLE,
-        50,
-        376,
-        85,
-        20,
+        432,
+        414,
+        86,
+        22,
         hwnd,
         232 as _,
         std::ptr::null_mut(),
@@ -326,10 +327,10 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("EDIT"),
         windows_sys::w!("300"),
         WS_CHILD | WS_VISIBLE | WS_BORDER | ES_NUMBER as u32 | ES_CENTER as u32,
-        140,
-        374,
-        50,
-        22,
+        522,
+        410,
+        60,
+        26,
         hwnd,
         231 as _,
         std::ptr::null_mut(),
@@ -344,81 +345,77 @@ pub unsafe fn create(hwnd: HWND) {
         windows_sys::w!("STATIC"),
         windows_sys::w!("seconds (Default: 300s)"),
         WS_CHILD | WS_VISIBLE,
-        196,
-        376,
-        200,
-        20,
+        588,
+        414,
+        198,
+        22,
         hwnd,
         233 as _,
         std::ptr::null_mut(),
         std::ptr::null_mut(),
     );
-    if !lbl_idle_sec.is_null() && !font_ui().is_null() {
-        SendMessageW(lbl_idle_sec, WM_SETFONT, font_ui() as WPARAM, 1);
+    if !lbl_idle_sec.is_null() && !f_desc.is_null() {
+        SendMessageW(lbl_idle_sec, WM_SETFONT, f_desc as WPARAM, 1);
     }
 }
 
-/// Populates Tab 1 controls from application configuration.
+/// Loads configuration state into Tab 1 controls.
 ///
 /// # Safety
-/// Caller must pass a valid dialog window handle where Tab 1 controls exist.
+/// Caller must ensure `hwnd` is a valid dialog handle containing Tab 1 controls.
 pub unsafe fn load(hwnd: HWND, cfg: &AppConfig) {
-    let thresh_str = format!("{}\0", cfg.triggers.threshold_percent);
-    let thresh_wide: Vec<u16> = thresh_str.encode_utf16().collect();
-    let edit_thresh = GetDlgItem(hwnd, 205);
-    if !edit_thresh.is_null() {
-        SetWindowTextW(edit_thresh, thresh_wide.as_ptr());
-    }
+    let s_thresh = format!("{}", cfg.triggers.threshold_percent);
+    let wide_thresh: Vec<u16> = s_thresh.encode_utf16().chain(std::iter::once(0)).collect();
+    SetWindowTextW(GetDlgItem(hwnd, 205), wide_thresh.as_ptr());
 
     set_checked(hwnd, 209, cfg.triggers.auto_timer_enabled);
-    let timer_str = format!("{}\0", cfg.triggers.timer_seconds);
-    let timer_wide: Vec<u16> = timer_str.encode_utf16().collect();
-    let edit_timer = GetDlgItem(hwnd, 211);
-    if !edit_timer.is_null() {
-        SetWindowTextW(edit_timer, timer_wide.as_ptr());
-    }
+
+    let s_timer = format!("{}", cfg.triggers.timer_seconds);
+    let wide_timer: Vec<u16> = s_timer.encode_utf16().chain(std::iter::once(0)).collect();
+    SetWindowTextW(GetDlgItem(hwnd, 211), wide_timer.as_ptr());
 
     set_checked(hwnd, 220, cfg.triggers.islc_enabled);
-    let islc_s_str = format!("{}\0", cfg.triggers.islc_standby_mb);
-    let islc_s_wide: Vec<u16> = islc_s_str.encode_utf16().collect();
-    let edit_islc_standby = GetDlgItem(hwnd, 221);
-    if !edit_islc_standby.is_null() {
-        SetWindowTextW(edit_islc_standby, islc_s_wide.as_ptr());
-    }
 
-    let islc_f_str = format!("{}\0", cfg.triggers.islc_free_mb);
-    let islc_f_wide: Vec<u16> = islc_f_str.encode_utf16().collect();
-    let edit_islc_free = GetDlgItem(hwnd, 222);
-    if !edit_islc_free.is_null() {
-        SetWindowTextW(edit_islc_free, islc_f_wide.as_ptr());
-    }
+    let s_standby = format!("{}", cfg.triggers.islc_standby_mb);
+    let wide_standby: Vec<u16> = s_standby.encode_utf16().chain(std::iter::once(0)).collect();
+    SetWindowTextW(GetDlgItem(hwnd, 221), wide_standby.as_ptr());
+
+    let s_free = format!("{}", cfg.triggers.islc_free_mb);
+    let wide_free: Vec<u16> = s_free.encode_utf16().chain(std::iter::once(0)).collect();
+    SetWindowTextW(GetDlgItem(hwnd, 222), wide_free.as_ptr());
 
     set_checked(hwnd, 230, cfg.triggers.idle_clean_enabled);
-    let idle_str = format!("{}\0", cfg.triggers.idle_seconds);
-    let idle_wide: Vec<u16> = idle_str.encode_utf16().collect();
-    let edit_idle = GetDlgItem(hwnd, 231);
-    if !edit_idle.is_null() {
-        SetWindowTextW(edit_idle, idle_wide.as_ptr());
-    }
+
+    let s_idle = format!("{}", cfg.triggers.idle_seconds);
+    let wide_idle: Vec<u16> = s_idle.encode_utf16().chain(std::iter::once(0)).collect();
+    SetWindowTextW(GetDlgItem(hwnd, 231), wide_idle.as_ptr());
 }
 
-/// Reads Tab 1 control states and writes them into `AppConfig`.
+/// Reads Tab 1 control states and updates `AppConfig`.
 ///
 /// # Safety
-/// Caller must pass a valid dialog window handle where Tab 1 controls exist.
+/// Caller must ensure `hwnd` is a valid dialog handle containing Tab 1 controls.
 pub unsafe fn save(hwnd: HWND, cfg: &mut AppConfig) {
-    let mut buf = [0u16; 16];
-    let len = GetWindowTextW(GetDlgItem(hwnd, 205), buf.as_mut_ptr(), buf.len() as i32);
-    let text = String::from_utf16_lossy(&buf[..len.max(0) as usize]);
-    if let Ok(val) = text.trim().parse::<u32>() {
+    let mut buf_thresh = [0u16; 16];
+    let len_thresh = GetWindowTextW(
+        GetDlgItem(hwnd, 205),
+        buf_thresh.as_mut_ptr(),
+        buf_thresh.len() as i32,
+    );
+    let text_thresh = String::from_utf16_lossy(&buf_thresh[..len_thresh.max(0) as usize]);
+    if let Ok(val) = text_thresh.trim().parse::<u32>() {
         cfg.triggers.threshold_percent = clamp_threshold_percent(val);
     }
+
     cfg.triggers.auto_timer_enabled = is_checked(hwnd, 209);
-    let mut buf_time = [0u16; 16];
-    let len_time =
-        GetWindowTextW(GetDlgItem(hwnd, 211), buf_time.as_mut_ptr(), buf_time.len() as i32);
-    let text_time = String::from_utf16_lossy(&buf_time[..len_time.max(0) as usize]);
-    if let Ok(val) = text_time.trim().parse::<u32>() {
+    let mut buf_timer = [0u16; 16];
+    let len_timer = GetWindowTextW(
+        GetDlgItem(hwnd, 211),
+        buf_timer.as_mut_ptr(),
+        buf_timer.len() as i32,
+    );
+    let text_timer = String::from_utf16_lossy(&buf_timer[..len_timer.max(0) as usize]);
+    if let Ok(val) = text_timer.trim().parse::<u32>() {
         cfg.triggers.timer_seconds = clamp_timer_seconds(val);
     }
 

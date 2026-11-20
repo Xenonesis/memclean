@@ -1,7 +1,7 @@
 use crate::config::AppConfig;
 use windows_sys::Win32::Foundation::{HWND, WPARAM};
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, SendMessageW, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+    CreateWindowExW, SendMessageW, BS_OWNERDRAW, WM_SETFONT, WS_CHILD, WS_VISIBLE,
 };
 
 use super::common::{create_chk, create_radio, font_desc, font_ui, is_checked, set_checked};
@@ -14,37 +14,39 @@ pub const CTRLS: &[i32] = &[240, 241, 242, 243, 251, 250, 270, 275, 260, 261, 26
 /// Caller must ensure `hwnd` is a valid dialog window handle on the UI thread.
 pub unsafe fn create(hwnd: HWND) {
     // --- TAB 2: KERNEL & GAMING ---
-    // Card 1: Scheduler Timer Resolution
+    // Left Column: Scheduler Timer Resolution Options
     create_radio(
         hwnd,
-        windows_sys::w!("Default Timer Resolution (15.6 ms - Standard)"),
-        30,
-        84,
-        420,
+        windows_sys::w!("Default Resolution (15.6 ms - Windows Standard)"),
+        34,
+        220,
+        354,
         240,
     );
     create_radio(
         hwnd,
-        windows_sys::w!("1.0 ms Multimedia Latency (1,000 µs - Audio / Video Sync)"),
-        30,
-        106,
-        420,
+        windows_sys::w!("1.0 ms Multimedia Latency (Audio / Video Sync)"),
+        34,
+        260,
+        354,
         241,
     );
     create_radio(
         hwnd,
-        windows_sys::w!("0.5 ms Competitive Gaming (500 µs - Minimum Latency)"),
-        30,
-        128,
-        420,
+        windows_sys::w!("0.5 ms Competitive Gaming (500 µs Low Latency)"),
+        34,
+        300,
+        354,
         242,
     );
+
+    // Left Column: CPU Core Unparking Toggle Switch
     create_chk(
         hwnd,
-        windows_sys::w!("Unpark 100% CPU Cores (Zero-Latency Burst Performance)"),
-        30,
-        152,
-        420,
+        windows_sys::w!("Unpark 100% CPU Cores (Burst Performance)"),
+        34,
+        348,
+        354,
         243,
     );
 
@@ -52,12 +54,12 @@ pub unsafe fn create(hwnd: HWND) {
         0,
         windows_sys::w!("STATIC"),
         windows_sys::w!(
-            "Locks Windows kernel timer resolution to 0.5ms and unparks all cores for zero-stutter gaming."
+            "Locks Windows kernel timer resolution to 0.5ms and keeps all cores awake to eliminate wake-up latency and micro-stutters."
         ),
         WS_CHILD | WS_VISIBLE,
-        30,
-        178,
-        420,
+        34,
+        400,
+        354,
         36,
         hwnd,
         251 as _,
@@ -69,50 +71,51 @@ pub unsafe fn create(hwnd: HWND) {
         SendMessageW(lbl_res_desc, WM_SETFONT, f_desc as WPARAM, 1);
     }
 
-    // Card 2: Kernel Page Combining, VRAM, CPU & Network Latency
+    // --- RIGHT COLUMN: Advanced Memory & Hardware Optimizations ---
     create_chk(
         hwnd,
         windows_sys::w!("Enable Kernel Page Combining (RAM De-duplication)"),
-        30,
-        264,
-        420,
+        432,
+        220,
+        354,
         250,
     );
     create_chk(
         hwnd,
-        windows_sys::w!("Enable GPU / VRAM Decommitment on Clean (WDDM 2.1+)"),
-        30,
-        285,
-        420,
+        windows_sys::w!("Trim GPU / VRAM Decommitment on Clean (WDDM 2.1+)"),
+        432,
+        270,
+        354,
         270,
     );
     create_chk(
         hwnd,
-        windows_sys::w!("Enable Hybrid CPU Scheduling (Games to P-Cores, Bloat to E-Cores)"),
-        30,
-        306,
-        420,
+        windows_sys::w!("Enable Hybrid CPU Scheduling (Game on P-Cores)"),
+        432,
+        320,
+        354,
         275,
     );
 
+    // Right Column: Competitive Gaming Network Stack
     create_chk(
         hwnd,
-        windows_sys::w!("Enable Competitive Gaming TCP Stack (NoDelay && No Throttling)"),
-        30,
-        350,
-        420,
+        windows_sys::w!("Competitive Gaming TCP Stack (NoDelay & Fast ACK)"),
+        432,
+        380,
+        354,
         260,
     );
 
     let btn_net_restore = CreateWindowExW(
         0,
         windows_sys::w!("BUTTON"),
-        windows_sys::w!("Restore Network Defaults"),
-        WS_CHILD | WS_VISIBLE,
+        windows_sys::w!("↺ Restore Network Defaults"),
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW as u32,
+        432,
+        432,
+        185,
         30,
-        374,
-        165,
-        22,
         hwnd,
         261 as _,
         std::ptr::null_mut(),
@@ -126,12 +129,12 @@ pub unsafe fn create(hwnd: HWND) {
     let lbl_net_desc = CreateWindowExW(
         0,
         windows_sys::w!("STATIC"),
-        windows_sys::w!("No delayed ACKs, 100% CPU priority."),
+        windows_sys::w!("Disables Nagle's algorithm and network index throttling for minimal multiplayer ping."),
         WS_CHILD | WS_VISIBLE,
-        205,
-        377,
-        245,
-        18,
+        432,
+        470,
+        354,
+        28,
         hwnd,
         262 as _,
         std::ptr::null_mut(),
@@ -148,9 +151,21 @@ pub unsafe fn create(hwnd: HWND) {
 /// Caller must ensure `hwnd` is a valid dialog handle containing Tab 2 controls.
 pub unsafe fn load(hwnd: HWND, cfg: &AppConfig) {
     match cfg.tuning.timer_mode_enum() {
-        crate::core::timer_res::TimerResolutionMode::HalfMs => set_checked(hwnd, 242, true),
-        crate::core::timer_res::TimerResolutionMode::OneMs => set_checked(hwnd, 241, true),
-        crate::core::timer_res::TimerResolutionMode::Default => set_checked(hwnd, 240, true),
+        crate::core::timer_res::TimerResolutionMode::HalfMs => {
+            set_checked(hwnd, 242, true);
+            set_checked(hwnd, 241, false);
+            set_checked(hwnd, 240, false);
+        }
+        crate::core::timer_res::TimerResolutionMode::OneMs => {
+            set_checked(hwnd, 242, false);
+            set_checked(hwnd, 241, true);
+            set_checked(hwnd, 240, false);
+        }
+        crate::core::timer_res::TimerResolutionMode::Default => {
+            set_checked(hwnd, 242, false);
+            set_checked(hwnd, 241, false);
+            set_checked(hwnd, 240, true);
+        }
     }
 
     set_checked(hwnd, 243, cfg.tuning.unpark_cores_enabled);
@@ -160,7 +175,7 @@ pub unsafe fn load(hwnd: HWND, cfg: &AppConfig) {
     set_checked(hwnd, 260, cfg.network.low_latency_enabled);
 }
 
-/// Saves Tab 2 control values back into the application configuration and applies hardware changes.
+/// Saves Tab 2 control values back into application configuration and applies hardware changes.
 ///
 /// # Safety
 /// Caller must ensure `hwnd` is a valid dialog handle containing Tab 2 controls.
